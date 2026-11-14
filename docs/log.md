@@ -11,6 +11,22 @@ timestamp: 2026-08-11T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-14 — 0.9.1: oasgen-provider floor 0.67.0
+
+Raises `krateo.io/requires-oasgen-provider` to `>= 0.67.0`; nothing else changes. On oasgen-provider
+0.66.0 (now retracted) a `KeycloakUserProfile` whose realm does not exist at its first observe, which
+is every fresh krateo-keycloak-realm install because the realm and its profile are created together,
+re-queued about 5 times a second and never turned Ready, even after the realm existed, until its
+controller restarted (oasgen-provider #674; 0.65.0 backed off and recovered). 0.67.0 fixes it and keeps
+0.66.0's keyed comparison of `protocolMappers`. Verified on a disposable GKE cluster with Keycloak 26.6.3,
+each arm on a userprofile controller running rest-dynamic-controller 0.67.0 from start to end (pod
+restart count and start time unchanged): a profile on a missing realm logged 2 "create not requested"
+lines in 13 minutes instead of about 295 a minute, and turned Available about 6 minutes after the
+realm was created, without a restart. krateo-keycloak-realm installed fresh on a realm that did not
+exist yet hit the race (the profile's first observe in the same second as the realm's create) and every
+object was Ready within 7 minutes, `krateo-ide` with no update. An orphaned `*Configuration` CRD
+(foreign owner annotation, stale schema) is adopted in place, same UID, schema replaced.
+
 ## 2026-11-14 — 0.9.0: a client's protocol mappers are matched by name
 
 Keycloak returns a client's protocol mappers in its own order: stable for one object across reads, PUTs
