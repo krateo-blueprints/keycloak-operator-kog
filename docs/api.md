@@ -66,7 +66,7 @@ Each resource CR references its Configuration via `spec.configurationRef`.
 | CR Kind | Keycloak verbs (from `verbsDescription`) | Addressing |
 |---|---|---|
 | `KeycloakRealm` | create `POST /admin/realms`; get/update/delete `…/realms/{realm}`; findby `GET /admin/realms` | natural key `realm`; `id` read-only in `status` |
-| `KeycloakClient` | findby `…/clients`; create `POST …/clients`; get/update/delete `…/clients/{id}` | `clientId` → `id` via findby; inline `protocolMappers` supported; confidential secret from a Secret (`clientSecretRef`) |
+| `KeycloakClient` | findby `…/clients`; create `POST …/clients`; get/update/delete `…/clients/{id}` | `clientId` → `id` via findby; inline `protocolMappers` matched by mapper `name` (see below); confidential secret from a Secret (`clientSecretRef`) |
 | `KeycloakProtocolMapper` | findby + CRUD on `…/client-scopes` or client mappers | `name` → UUID via findby; parent `clientUuid` |
 | `KeycloakClientScope` | findby + CRUD on `…/client-scopes/{id}` | `name` → UUID via findby |
 | `KeycloakGroup` | findby + CRUD on `…/groups/{id}` | `name` → UUID via findby |
@@ -182,3 +182,30 @@ renders the controller's authn allowlist CR and least-privilege RBAC (`execution
 - **ACR → LoA** is the standard `acr.loa.map` client attribute on
   `KeycloakClient.attributes` (set `default.acr.values` for the default level), so
   issued tokens carry the `acr` claim per level. See `samples/20-authentication-mfa.yaml`.
+
+## `KeycloakClient.protocolMappers`
+
+The list is a Kubernetes list-map keyed by `name` (`x-kubernetes-list-type: map`), and `name` is
+required. Keycloak keeps mapper names unique per client and returns the mappers in its own order, so
+the controller matches them by name, not by position (oasgen-provider >= 0.66.0).
+
+Keycloak treats the list in a client PUT as authoritative (measured on 26.6.3):
+
+| `spec.protocolMappers` | Keycloak after the update |
+|---|---|
+| present, with entries | exactly those mappers: a dropped one is deleted, a new one created, a changed one updated |
+| `[]` | no mappers |
+| absent | mappers left as they are (no opinion) |
+
+Because a present list replaces the client's mappers, manage a client's mappers either inline here or
+with `KeycloakProtocolMapper` objects, never both: an inline list deletes mappers created by the other
+kind. Leave `protocolMappers` out to hand them to `KeycloakProtocolMapper`.
+
+**Server-side apply and the empty list.** Under server-side apply a field manager that applies
+`protocolMappers: []` to a list-map gives up its entries, and the API server then removes the field
+(Kubernetes semantics, measured on 1.36: an atomic list keeps `[]`, a list-map does not). The CR ends
+with no `protocolMappers`, which means "no opinion", so Keycloak keeps the mappers and the CR is
+correctly Ready. To remove every mapper, write `[]` with an update or merge patch, which keeps it:
+Helm upgrades (Krateo compositions included) do this, and `kubectl patch --type=merge` does too. Two
+other SSA consequences: an entry also applied by a second field manager survives when one manager drops
+it, and dropping one entry through Helm or SSA deletes that mapper in Keycloak (both measured).

@@ -11,6 +11,22 @@ timestamp: 2026-08-11T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-14 — 0.9.0: a client's protocol mappers are matched by name
+
+Keycloak returns a client's protocol mappers in its own order: stable for one object across reads, PUTs
+and restarts, but neither the declared order nor the same between objects. The comparison was
+positional, so a client whose mappers came back reordered was re-PUT on every resync until
+`DriftNotConverging` latched (krateo-ide's MCP client is one). `KeycloakClient.protocolMappers` is now
+declared a list-map keyed by `name` (`name` required), which oasgen-provider 0.66.0 carries into the CRD
+and uses to match entries by key. Floor raised to oasgen-provider >= 0.66.0.
+Proven on a disposable GKE cluster (oasgen-provider 0.66.0, Keycloak 26.6.3): under the 0.8.1 CRD a
+five-mapper client served as `[m5, m4, groups, mcp-audience, m3]` was PUT four times in ten minutes; the
+upgrade to this chart regenerated the CRD from the changed asset alone (RestDefinition generation
+unchanged, controller not restarted) and the same client took no further PUT. Clients created under
+0.8.1 kept working. Mapper removal was measured through Helm and server-side apply, and Keycloak's PUT
+was measured directly: a present list is authoritative, `[]` removes all, absent keeps all
+([api.md](api.md#keycloakclientprotocolmappers) has the table and the SSA empty-list caveat).
+
 ## 2026-11-13 — status fields audited against a live Keycloak (CI)
 
 rest-dynamic-controller skips a declared status field the server does not return without any error, so
