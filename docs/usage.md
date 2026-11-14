@@ -14,8 +14,12 @@ timestamp: 2026-08-11T00:00:00Z
 - A running Keycloak (the sibling
   [`krateo-keycloak-blueprint`](https://github.com/krateo-blueprints/krateo-keycloak-blueprint)
   stands one up), reachable at `keycloak.baseUrl`.
-- The KOG toolchain: `oasgen-provider` (with its bundled rest-dynamic-controller) **>= 0.62.0**
-  since 0.7.1 (Chart.yaml annotation `krateo.io/requires-oasgen-provider`). 0.62.0 compares the
+- The KOG toolchain: `oasgen-provider` (with its bundled rest-dynamic-controller) **>= 0.66.0**
+  since 0.9.0 (Chart.yaml annotation `krateo.io/requires-oasgen-provider`; >= 0.62.0 from 0.7.1).
+  0.66.0 matches a client's `protocolMappers` by mapper name: Keycloak returns them in its own
+  per-object order, so on older releases a client whose mappers come back reordered is re-PUT and
+  then latches `Ready=False` (measured on the 0.8.1 CRD: a five-mapper client, four PUTs in ten
+  minutes; none after the upgrade). 0.62.0 compares the
   realm's `enabledEventTypes` and `eventsListeners` as sets; Keycloak returns them in its own order,
   so on older releases a realm with more than a couple of event types is re-PUT a few times and then
   latches `Ready=False` (measured on 0.61.0: four PUTs, then "Drift is not converging").
