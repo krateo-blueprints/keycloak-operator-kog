@@ -115,6 +115,15 @@ components:
             type: string
         protocolMappers:
           type: array
+          # Keycloak returns a client's mappers in its own per-object order (measured on 26.6.3: stable
+          # across reads and restarts, but neither the declared order nor sorted), so the list is matched
+          # by mapper NAME, which Keycloak keeps unique per client (a duplicate is refused, 409).
+          # oasgen-provider >= 0.66.0 carries these into the CRD and compares by key; with an older
+          # oasgen the list stays positional and a client with two or more mappers latches
+          # DriftNotConverging.
+          x-kubernetes-list-type: map
+          x-kubernetes-list-map-keys:
+            - name
           items:
             $ref: '#/components/schemas/ClientProtocolMapperEntry'
         id:
@@ -123,6 +132,9 @@ components:
           readOnly: true
     ClientProtocolMapperEntry:
       type: object
+      # The map key of protocolMappers: required (Kubernetes refuses a list-map key that is not).
+      required:
+        - name
       properties:
         name:
           type: string
