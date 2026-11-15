@@ -11,6 +11,16 @@ timestamp: 2026-08-11T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-15 — 0.9.2: the Remember me session timeouts are declared
+
+KeycloakRealm declared `rememberMe` but not `ssoSessionIdleTimeoutRememberMe` and
+`ssoSessionMaxLifespanRememberMe`, so the CRD pruned them and a Remember me session could only use the
+ordinary SSO timeouts. Both are now declared (int32; 0 = use the ordinary timeouts), as in Keycloak's
+RealmRepresentation. krateo-keycloak-realm 0.5.3 renders them and requires this release. Measured on a
+disposable GKE cluster (oasgen-provider 0.71.0, Keycloak 26.6.3): set to 28800 / 36000 they reach Keycloak
+with one realm PUT and no further PUT; with 0.9.1's CRD the same values are pruned from the stored CR
+while it stays Ready (the reason the realm chart pins this release). No other change.
+
 ## 2026-11-14 — 0.9.1: oasgen-provider floor 0.67.0
 
 Raises `krateo.io/requires-oasgen-provider` to `>= 0.67.0`; nothing else changes. On oasgen-provider
