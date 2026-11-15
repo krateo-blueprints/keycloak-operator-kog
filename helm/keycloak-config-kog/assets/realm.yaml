@@ -188,6 +188,14 @@ components:
         ssoSessionMaxLifespan:
           type: integer
           description: Shared-SSO max session lifespan (seconds).
+        ssoSessionIdleTimeoutRememberMe:
+          type: integer
+          format: int32
+          description: SSO idle timeout (seconds) for a session the user signed in to with Remember me ticked; 0 = use ssoSessionIdleTimeout.
+        ssoSessionMaxLifespanRememberMe:
+          type: integer
+          format: int32
+          description: SSO max lifespan (seconds) for a Remember me session; 0 = use ssoSessionMaxLifespan.
         internationalizationEnabled:
           type: boolean
         defaultLocale:
