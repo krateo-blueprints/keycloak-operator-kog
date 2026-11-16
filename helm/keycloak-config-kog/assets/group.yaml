@@ -27,10 +27,15 @@ components:
           description: Group name. Natural key (findby).
         path:
           type: string
+        # Keycloak's GroupRepresentation.attributes is Map<String, List<String>> (upstream OpenAPI and the
+        # Admin API). It was typed as a map of strings, so the generated KeycloakGroup CRD rejected every
+        # group attribute (measured 2026-11-16: "spec.attributes.pf in body must be of type string").
         attributes:
           type: object
           additionalProperties:
-            type: string
+            type: array
+            items:
+              type: string
         realmRoles:
           type: array
           items:
