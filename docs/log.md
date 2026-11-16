@@ -41,9 +41,11 @@ no-op: measured, all 13 stored RDs without the field after a clean upgrade. And 
 first and the CRD later does not repair it: helm's three-way diff does not re-send a field the cluster
 pruned, so the RDs stay without it until a later chart change touches those lines (measured; a rollback
 and re-upgrade restored it). 0.77.0 rather than 0.76.0 because from 0.76.0 a lost create response on a
-kind with an `observeApiRef` (`KeycloakServiceAccountRoleMapping`, `KeycloakAuthenticationExecution`)
-stuck at `CreateOutcomeUnknown` until a person cleared it; 0.77.0 re-checks it on the next pass, so
-nothing needs doing by hand.
+kind with an `observeApiRef` stuck at `CreateOutcomeUnknown` until a person cleared it; 0.77.0
+re-checks it on the next pass, so nothing needs doing by hand. Of this chart's two such kinds,
+`KeycloakAuthenticationExecution` creates and was exposed; `KeycloakServiceAccountRoleMapping`, as the
+realm chart deploys it, does not: its service-account user already exists, so it reconciles through
+an update (measured) and never takes the create path.
 
 **Group attributes are lists of strings.** The bundled group OpenAPI typed each attribute value as a
 string, while Keycloak holds `Map<String, List<String>>`, so the generated `KeycloakGroup` CRD refused
