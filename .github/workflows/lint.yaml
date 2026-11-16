@@ -144,6 +144,12 @@ jobs:
           python3 -m pip install --quiet pyyaml
           python3 hack/check-values-declared.py
 
+      - name: Gate the bundled OAS assets against Keycloak's own OpenAPI (type shape per property)
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pyyaml
+          python3 hack/check-assets-vs-upstream.py
+
       - name: Gate values.schema.json (no `required` key that values.yaml defaults)
         run: |
           set -euo pipefail
