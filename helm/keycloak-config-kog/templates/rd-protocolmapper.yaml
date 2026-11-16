@@ -37,6 +37,10 @@ spec:
       - action: update
         method: PUT
         path: /admin/realms/{realm}/clients/{clientUuid}/protocol-mappers/models/{id}
+        # Keycloak fills this map with server-side keys the CR does not declare; the PUT would send it
+        # whole and delete them. Merged with what Keycloak holds (oasgen-provider >= 0.76.0, #737).
+        partialFields:
+          - config
         requestFieldMapping:
           - inPath: id
             inCustomResource: status.id

@@ -27,7 +27,12 @@ annotations:
   # but on 0.66.0 a KeycloakUserProfile (no create verb) whose realm does not exist yet at its first
   # observe re-queues without backoff and never turns Ready (oasgen-provider #674, fixed in 0.67.0).
   # 0.62.0 already compares the realm's set-typed arrays (enabledEventTypes, eventsListeners) as sets.
-  krateo.io/requires-oasgen-provider: ">= 0.67.0"
+  # 0.76.0: the update verbs of seven kinds declare `partialFields` (oasgen-provider #737), so Keycloak's
+  # server-side keys in those maps are merged instead of deleted by the PUT. An older controller ignores the
+  # field and an older RestDefinition CRD PRUNES it at admission, silently, so both floors are required: the
+  # CRD floor names the installer COMPONENT (oasgen-provider-crd), not the chart (oasgen-provider-crds).
+  krateo.io/requires-oasgen-provider: ">= 0.76.0"
+  krateo.io/requires-oasgen-provider-crd: ">= 0.76.0"
 # Helm's `sources` is the source code of THIS chart, and release tooling resolves the chart version
 # as a tag in each listed repo. The Keycloak OpenAPI document (an input, vendored under assets/) and
 # oasgen-provider (the generator that reads it) are not this chart's source: listing oasgen-provider
