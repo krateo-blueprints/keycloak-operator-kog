@@ -283,6 +283,21 @@ $ kubectl -n krateo-system get secret keycloak-admin-token -o jsonpath='{.data.t
 If a CR stalls `Ready=False`, check the rdc logs and confirm the token Secret is
 being refreshed (a stale token surfaces as 401s from the Admin API).
 
+## A deletion that hangs
+
+`kubectl delete` on a Keycloak CR can stay pending with the finalizer held. Two different causes
+produce the same symptom; read the CR's `Ready` condition to tell which one you have. Both were
+measured on oasgen-provider 0.80.0 with this chart's 0.10.0 (2026-11-17).
+
+| `Ready` condition | cause | what clears it |
+|---|---|---|
+| `False/Creating`, message ends `existence check: reading external state via findby: unexpected status: 401` | the CR's credential is rejected while a create's outcome is still pending | **restore the credential** (normally the ESO-minted admin token). The delete then completes by itself: measured 66 s after the token came back, with no duplicate. The wait is bounded by the outage, not by the controller. |
+| `False/CreateOutcomeUnknown`, message `cannot determine creation result - remove the krateo.io/external-create-pending annotation if it is safe to proceed` | a create's response was lost and the object cannot be found at Keycloak by the CR's identity | if the object **does** exist at Keycloak under that identity, the next existence check matches it and the delete proceeds. If you have **verified in Keycloak** that it was never created, remove the `krateo.io/external-create-pending` annotation. To release the CR without touching Keycloak at all, set `krateo.io/deletion-policy: orphan` first. |
+
+A CR that also carries `krateo.io/external-create-succeeded` is not in the second state: its create was
+recorded. **Do not remove the finalizer by hand**: under the default deletion policy that skips the
+Keycloak delete and leaves the object behind with nothing pointing at it.
+
 ## The OAS assets
 
 `helm/keycloak-config-kog/assets/<key>.yaml` is the hand-curated OpenAPI 3.0 subset each kind is
