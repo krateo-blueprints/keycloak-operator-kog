@@ -11,6 +11,19 @@ timestamp: 2026-08-11T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-17 — unreleased: floors 0.78.0; KeycloakUser `groups` is create-only
+
+**Floors raised to oasgen-provider and oasgen-provider-crd `>= 0.78.0`.** oasgen-provider retracted
+0.77.0: on a findby-addressed kind a create whose outcome cannot be determined stays Creating forever
+instead of reaching `CreateOutcomeUnknown`. Measured on this chart's kinds on 0.78.0 and 0.80.0
+(disposable GKE, through the installer): the arm reaches `CreateOutcomeUnknown`, with no extra POSTs.
+
+**`KeycloakUser.spec.groups` applies on create only.** Measured on 0.10.0 / oasgen 0.80.0: a user
+created with `groups: [tenants]` joined `tenants`; there were 0 updates over two resyncs (no drift
+loop); and changing `groups` to `[platform-admins]` sent exactly one update and changed **no**
+membership, because Keycloak's user PUT ignores the field. The description said "create/update" and
+now says create-only. Membership changes after create belong to group-membership resources.
+
 ## 2026-11-16 — 0.10.0: Keycloak's own keys in a map survive an update; group attributes are lists
 
 **Partial fields.** Keycloak fills some maps with keys the CR does not declare, and an update sent each
