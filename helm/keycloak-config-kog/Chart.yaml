@@ -34,8 +34,12 @@ annotations:
   # from 0.76.0 a lost create response on a kind with an observeApiRef (KeycloakServiceAccountRoleMapping,
   # KeycloakAuthenticationExecution) stuck at CreateOutcomeUnknown for good; 0.77.0 (unstructured-runtime
   # v1.24.0) requeues it instead, so these kinds recover by themselves and need no manual step.
-  krateo.io/requires-oasgen-provider: ">= 0.77.0"
-  krateo.io/requires-oasgen-provider-crd: ">= 0.77.0"
+  # 0.78.0 (next release): 0.77.0 is RETRACTED by oasgen-provider (its retracted-versions.yaml): on a
+  # findby-addressed kind (most of this chart's) a create whose outcome cannot be determined stays
+  # Creating instead of reaching CreateOutcomeUnknown, so a parent reads healthy over a resource that will
+  # never exist. Fixed by #759 in 0.78.0. Measured here on 0.78.0 and 0.80.0 (kc-roll057, 2026-11-17).
+  krateo.io/requires-oasgen-provider: ">= 0.78.0"
+  krateo.io/requires-oasgen-provider-crd: ">= 0.78.0"
 # Helm's `sources` is the source code of THIS chart, and release tooling resolves the chart version
 # as a tag in each listed repo. The Keycloak OpenAPI document (an input, vendored under assets/) and
 # oasgen-provider (the generator that reads it) are not this chart's source: listing oasgen-provider

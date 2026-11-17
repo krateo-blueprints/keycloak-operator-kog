@@ -44,7 +44,9 @@ components:
             type: string
         groups:
           type: array
-          description: Group paths/names the user is a member of (applied on create/update).
+          description: Group paths/names the user joins WHEN CREATED. Keycloak's user update ignores this field,
+            so a later change adds or removes no membership; manage memberships after create with
+            group-membership resources.
           items:
             type: string
         credentials:
