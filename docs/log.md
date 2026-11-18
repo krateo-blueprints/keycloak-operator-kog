@@ -11,6 +11,24 @@ timestamp: 2026-08-11T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-18 — KeycloakUser findby asks for ONE user instead of reading Keycloak's first page
+
+**Measured defect.** The user `findby` listed `GET /admin/realms/{realm}/users` with no parameters, and Keycloak 26
+answers that with a default page of **100** users. In a throwaway realm with 105 unmanaged users, a KeycloakUser whose
+username sorted **after** the page was created once (Keycloak count 1) and then never found again: the existence check
+listed the first page, matched nothing, and the CR went to `CreateOutcomeUnknown` and stayed there. A user sorting
+inside the page (the control) reached Ready. So any realm with more than 100 users could strand a managed user right
+after creating it, and could not adopt an existing user beyond the page. **Only users page**: in the same realm
+`/groups`, `/clients` and `/client-scopes` returned every item (105, 111 and 119).
+
+**Fix.** The asset declares the `username` and `exact` query parameters on that operation. `username` is filled from
+`spec.username`; `exact` is a `configurationFields` constant for the `findby` action, so the search is an exact match
+and is **not** a CR field (a user cannot turn it off, and a configuration value wins over a same-named spec field).
+The Configuration CR carries it at `spec.configuration.query.findby.exact: true`. Exact matters beyond paging: from
+oasgen-provider 0.83.0 a findby **refuses** two matching items, and Keycloak's default `username` search is a substring
+match. Adding `configurationFields` to an RD that had none is accepted by admission (measured with a server dry-run),
+and the provider regenerates the Configuration CRD on the `spec.resource` hash change.
+
 ## 2026-11-17 — unreleased: floors 0.78.0; KeycloakUser `groups` is create-only
 
 **Floors raised to oasgen-provider and oasgen-provider-crd `>= 0.78.0`.** oasgen-provider retracted

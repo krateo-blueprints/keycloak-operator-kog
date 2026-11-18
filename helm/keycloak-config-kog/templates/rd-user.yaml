@@ -22,6 +22,17 @@ spec:
     # status (populated by findby); not a user-set spec field.
     excludedSpecFields:
       - id
+    # `exact` is sent on the findby as a constant from the Configuration CR (spec.configuration.query.findby.exact),
+    # never a CR field, so a user cannot turn the exact match off. Without it the findby read only Keycloak's
+    # default first page of 100 users. Added to an RD that had no configurationFields: admission accepts the
+    # append (measured), and the provider regenerates the Configuration CRD on the spec.resource hash change.
+    configurationFields:
+      - fromOpenAPI:
+          name: exact
+          in: query
+        fromRestDefinition:
+          actions:
+            - findby
     verbsDescription:
       - action: findby
         method: GET

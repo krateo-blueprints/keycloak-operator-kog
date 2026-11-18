@@ -140,6 +140,20 @@ paths:
         required: true
         schema:
           type: string
+      # The findby narrows to ONE user instead of reading Keycloak's default first page (100 users): a user
+      # sorting beyond it was created once and then never found again (CreateOutcomeUnknown, measured
+      # 2026-11-18). `username` is filled from spec.username; `exact` is a configurationFields constant
+      # (operator-controlled, not a CR field), so the search is exact rather than Keycloak's substring match.
+      - name: username
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: exact
+        in: query
+        required: false
+        schema:
+          type: boolean
       responses:
         '200':
           description: OK
