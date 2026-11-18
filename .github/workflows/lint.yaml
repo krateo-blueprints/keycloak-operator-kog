@@ -138,6 +138,12 @@ jobs:
           python3 -m pip install --quiet pyyaml
           python3 hack/check-reuse-values.py
 
+      - name: Gate configurationFields (every entry is declared in its asset; oasgen skips undeclared ones silently)
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pyyaml
+          python3 hack/check-configuration-fields.py
+
       - name: Gate the ESO token endpoint (follows keycloak.baseUrl unless set)
         run: |
           set -euo pipefail
