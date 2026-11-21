@@ -81,6 +81,8 @@ avoid crdgen collisions with same-named lowercase body properties (the Nova KOG'
 | `authenticationflow` | `KeycloakAuthenticationFlow` | `true` |
 | `requiredaction` | `KeycloakRequiredAction` | `true` |
 | `userprofile` | `KeycloakUserProfile` | `true` |
+| `clientprofiles` | `KeycloakClientProfiles` | `true` |
+| `clientpolicies` | `KeycloakClientPolicies` | `true` |
 | `authenticationexecution` | `KeycloakAuthenticationExecution` | `true` |
 | `serviceaccountrolemapping` | `KeycloakServiceAccountRoleMapping` | `true` |
 

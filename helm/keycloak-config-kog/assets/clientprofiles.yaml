@@ -1,0 +1,168 @@
+openapi: 3.0.3
+info:
+  title: Keycloak Admin API - Client Profiles (KOG subset)
+  version: v1
+  description: |
+    Hand-curated OpenAPI 3.0 subset of the Keycloak Admin REST API for a realm's client-policies PROFILES
+    (ClientProfilesRepresentation), sufficient to manage them through the Krateo Operator Generator (KOG).
+
+    ONE document per realm that always exists (a new realm starts with `profiles: []`), so it is never created or
+    deleted: the kind adopts the realm's document and replaces it with the CR's on update (PUT). The CR owns the
+    realm's WHOLE list of (non-global) profiles. Keycloak's built-in global profiles are not part of it (the GET
+    excludes them unless include-global-profiles=true).
+
+    TYPED, NOT FREE-FORM. Keycloak stores each executor's configuration verbatim (measured on 26.6.3: a boolean
+    round-trips as a boolean, the string "true" as a string) and refuses an unknown executor id (400). So the
+    executor id is an enum of the executors this kind models, and `configuration` declares exactly their keys with
+    the types from Keycloak's own serverinfo configProperties. An executor outside the enum is refused at
+    admission instead of having its configuration pruned by the API server.
+    Declares the http/bearer security scheme that the upstream Keycloak OAS omits.
+servers:
+- url: '{{ .Values.keycloak.baseUrl }}'
+  description: Keycloak base URL (no trailing slash).
+security:
+- bearer: []
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      description: Keycloak admin access token (OAuth2 Bearer).
+  schemas:
+    ExecutorConfiguration:
+      type: object
+      description: Configuration of one executor. Only the keys of the executor named in `executor` apply.
+      properties:
+        auto-configure:
+          type: boolean
+          description: pkce-enforcer, full-scope-disabled, consent-required - configure the client instead of only refusing it.
+        allow-ipv4-loopback-address:
+          type: boolean
+          description: secure-redirect-uris-enforcer - permit http://127.0.0.1 redirect URIs.
+        allow-ipv6-loopback-address:
+          type: boolean
+          description: secure-redirect-uris-enforcer - permit http://[::1] redirect URIs.
+        allow-private-use-uri-scheme:
+          type: boolean
+          description: secure-redirect-uris-enforcer - permit private-use URI schemes (com.example.app:/...).
+        allow-http-scheme:
+          type: boolean
+          description: secure-redirect-uris-enforcer - permit the http scheme (needed for loopback redirects).
+        allow-wildcard-context-path:
+          type: boolean
+          description: secure-redirect-uris-enforcer - permit a wildcard in the redirect URI path.
+        allow-permitted-domains:
+          type: array
+          description: secure-redirect-uris-enforcer - domains (regular expressions) a redirect URI host may match.
+          items:
+            type: string
+        oauth-2-1-compliant:
+          type: boolean
+          description: secure-redirect-uris-enforcer - apply OAuth 2.1's redirect URI rules.
+        allow-open-redirect:
+          type: boolean
+          description: secure-redirect-uris-enforcer - permit open redirects (never set true for agent clients).
+        allowed-patterns:
+          type: array
+          description: secure-client-uris-pattern - regular expressions every listed client URI must match.
+          items:
+            type: string
+        client-uri-fields:
+          type: array
+          description: secure-client-uris-pattern - which client URI fields the patterns apply to.
+          items:
+            type: string
+            enum:
+            - rootUrl
+            - adminUrl
+            - baseUrl
+            - redirectUris
+            - webOrigins
+            - jwksUri
+            - requestUris
+            - backchannelLogoutUrl
+            - postLogoutRedirectUris
+            - cibaClientNotificationEndpoint
+            - logoUri
+            - policyUri
+            - tosUri
+            - sectorIdentifierUri
+    Executor:
+      type: object
+      required:
+      - executor
+      properties:
+        executor:
+          type: string
+          description: Client-policy executor provider id (the ones this kind models).
+          enum:
+          - pkce-enforcer
+          - secure-redirect-uris-enforcer
+          - secure-client-uris-pattern
+          - full-scope-disabled
+          - consent-required
+        configuration:
+          $ref: '#/components/schemas/ExecutorConfiguration'
+    ClientProfile:
+      type: object
+      required:
+      - name
+      properties:
+        name:
+          type: string
+          description: Profile name, referenced by client policies.
+        description:
+          type: string
+        executors:
+          type: array
+          description: Executors applied, in order, to a client this profile is enforced on.
+          items:
+            $ref: '#/components/schemas/Executor'
+    ClientProfiles:
+      type: object
+      properties:
+        profiles:
+          type: array
+          description: The realm's WHOLE list of (non-global) client profiles.
+          items:
+            $ref: '#/components/schemas/ClientProfile'
+paths:
+  /admin/realms/{realm}/client-policies/profiles:
+    get:
+      operationId: getClientprofiles
+      summary: Get the realm's client-policies profiles (global profiles excluded)
+      tags:
+      - clientprofiles
+      parameters:
+      - name: realm
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientProfiles'
+    put:
+      operationId: updateClientprofiles
+      summary: Replace the realm's client-policies profiles
+      tags:
+      - clientprofiles
+      parameters:
+      - name: realm
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientProfiles'
+      responses:
+        '204':
+          description: Stored.

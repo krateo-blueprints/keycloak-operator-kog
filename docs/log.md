@@ -11,6 +11,25 @@ timestamp: 2026-08-11T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-21 — KeycloakClientProfiles and KeycloakClientPolicies (0.12.0)
+
+**Why.** Personal agents (OpenClaw via anonymous dynamic client registration, Hermes pre-registered) will sign in to
+agentiko-mcp-server's `/mcp` as their users. Diego's decisions: loopback-only redirects, anonymously registered
+clients disabled until an admin enables them, no CIMD. Enforcing that on registration needs Keycloak's client
+policies, which no kind could express.
+
+**Measured before writing the schema** (Keycloak 26.6.3, throwaway realms, deleted): a new realm has empty profiles and
+policies; a PUT round-trips exactly (configuration stored verbatim, a boolean stays a boolean and the string
+`"true"` a string); an unknown executor is refused (400). So the kinds are typed: executor and condition ids are
+enums, configuration keys typed from the serverinfo configProperties of each provider.
+
+**Validated live on kc-roll057** (oasgen 0.80.0): both RestDefinitions Ready and their CRDs generated with the enum and
+the typed keys; the CRs reached Ready and Keycloak's documents equal the spec; across two resyncs each controller
+logged only `External resource is up to date` (no write), while a hand overwrite was reverted in 140 s with exactly one
+`Successfully requested update of external resource` (the positive control for the quiet count); deleting the CRs left
+both documents in place. A first run's quiet count was void (a log filter that matched nothing) and was redone with
+the controller's own messages.
+
 ## 2026-11-18 — KeycloakUser findby asks for ONE user instead of reading Keycloak's first page
 
 **Measured defect.** The user `findby` listed `GET /admin/realms/{realm}/users` with no parameters, and Keycloak 26

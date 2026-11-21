@@ -270,6 +270,62 @@ The [krateo-keycloak-realm](https://github.com/krateo-blueprints/krateo-keycloak
 (0.3.0 and later) renders this CR from Keycloak's default profile plus its `userProfile.attributes`
 values, so most installs never write it by hand.
 
+
+## Realm client policies (0.12.0)
+
+Keycloak's client policies enforce rules on clients when they are registered, updated or used. Two documents per
+realm hold them: the **profiles** (bundles of executors, such as `pkce-enforcer` or `secure-redirect-uris-enforcer`)
+and the **policies** (which profiles apply to the clients a set of conditions matches). `KeycloakClientProfiles` and
+`KeycloakClientPolicies` manage them. Like `KeycloakUserProfile` they have no create and no delete verb: a realm
+always has both documents (a new realm starts with empty lists), so each CR adopts the realm's document, replaces it
+whole on every difference, and leaves it in place when the CR is deleted. The CR owns the realm's WHOLE list;
+Keycloak's built-in global profiles and policies are not part of it.
+
+The schema is typed, not free-form: the executor and condition ids are enums of the providers this chart models, and
+each `configuration` declares exactly their keys, with the types Keycloak reports for them. Keycloak stores
+configuration verbatim (a boolean stays a boolean, the string `"true"` stays a string), so a typed CR compares
+cleanly; an executor or condition outside the enum is refused at admission rather than having its configuration
+dropped. Modelled: executors `pkce-enforcer`, `secure-redirect-uris-enforcer`, `secure-client-uris-pattern`,
+`full-scope-disabled`, `consent-required`; conditions `client-updater-context`, `client-access-type`, `any-client`.
+
+Example: enforce PKCE and loopback-only redirects on anonymously registered clients (dynamic client registration):
+
+```yaml
+apiVersion: keycloak.ogen.krateo.io/v1
+kind: KeycloakClientProfiles
+metadata:
+  name: krateo-client-profiles
+spec:
+  configurationRef: {name: keycloak-admin, namespace: krateo-system}
+  realm: krateo
+  profiles:
+    - name: agent-dcr
+      executors:
+        - executor: pkce-enforcer
+          configuration: {auto-configure: true}
+        - executor: secure-redirect-uris-enforcer
+          configuration: {allow-ipv4-loopback-address: true, allow-http-scheme: true}
+        - executor: secure-client-uris-pattern
+          configuration:
+            client-uri-fields: [redirectUris]
+            allowed-patterns: ['^http://127\.0\.0\.1/oauth/mcp/callback$']
+---
+apiVersion: keycloak.ogen.krateo.io/v1
+kind: KeycloakClientPolicies
+metadata:
+  name: krateo-client-policies
+spec:
+  configurationRef: {name: keycloak-admin, namespace: krateo-system}
+  realm: krateo
+  policies:
+    - name: agent-dcr
+      enabled: true
+      conditions:
+        - condition: client-updater-context
+          configuration: {update-client-source: [ByAnonymous, ByRegistrationAccessToken]}
+      profiles: [agent-dcr]
+```
+
 ## Verify the admin-token path
 
 ESO mints a fresh admin bearer token from Keycloak's token endpoint into

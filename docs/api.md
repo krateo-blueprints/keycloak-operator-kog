@@ -76,6 +76,8 @@ Each resource CR references its Configuration via `spec.configurationRef`.
 | `KeycloakAuthenticationFlow` | findby + CRUD on `…/authentication/flows` | `alias` → UUID via findby |
 | `KeycloakRequiredAction` | CRUD on `…/authentication/required-actions/{alias}` | natural key `alias`; base actions ship built-in (reconcile observes+updates) |
 | `KeycloakUserProfile` | GET + PUT on `…/users/profile` (0.7.0) | one per realm, no identifiers: adopts the realm's profile and replaces it whole; no create, no delete |
+| `KeycloakClientProfiles` | GET + PUT on `…/client-policies/profiles` (0.12.0) | one per realm, no identifiers: adopts the realm's (non-global) profiles and replaces them whole; no create, no delete |
+| `KeycloakClientPolicies` | GET + PUT on `…/client-policies/policies` (0.12.0) | one per realm, no identifiers: adopts the realm's (non-global) policies and replaces them whole; no create, no delete |
 | `KeycloakAuthenticationExecution` | delegated — see below | `(realm, flowAlias, provider \| alias)` |
 | `KeycloakServiceAccountRoleMapping` | delegated — see below (0.8.0) | `(realm, clientId, roleClientId)` |
 

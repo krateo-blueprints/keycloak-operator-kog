@@ -386,6 +386,44 @@
               "default": "KeycloakServiceAccountRoleMapping"
             }
           }
+        },
+        "clientprofiles": {
+          "type": "object",
+          "title": "Client profiles",
+          "description": "KeycloakClientProfiles RestDefinition: a realm's client-policies profiles (executor bundles), adopted and replaced as a whole.",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "title": "Enabled",
+              "description": "Emit the KeycloakClientProfiles RestDefinition.",
+              "default": true
+            },
+            "kind": {
+              "type": "string",
+              "title": "Kind",
+              "description": "Kubernetes kind for the generated CRD.",
+              "default": "KeycloakClientProfiles"
+            }
+          }
+        },
+        "clientpolicies": {
+          "type": "object",
+          "title": "Client policies",
+          "description": "KeycloakClientPolicies RestDefinition: a realm's client policies (which profiles apply to which clients), adopted and replaced as a whole.",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "title": "Enabled",
+              "description": "Emit the KeycloakClientPolicies RestDefinition.",
+              "default": true
+            },
+            "kind": {
+              "type": "string",
+              "title": "Kind",
+              "description": "Kubernetes kind for the generated CRD.",
+              "default": "KeycloakClientPolicies"
+            }
+          }
         }
       }
     },
