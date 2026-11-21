@@ -63,6 +63,8 @@ resource kinds are served as `keycloak.ogen.krateo.io/v1` (the version is each O
 | `KeycloakAuthenticationFlow` | authentication flow (top-level container) | `alias` → UUID via `findby` |
 | `KeycloakRequiredAction` | required-action provider (`CONFIGURE_TOTP`, `webauthn-register`, …) | natural key `alias` (direct) |
 | `KeycloakUserProfile` | a realm's declarative user profile (attributes, who may view/edit them, validators) | one per realm (`realm` is the key); adopt-then-replace, never created or deleted |
+| `KeycloakClientProfiles` | a realm's client-policies profiles (executor bundles: PKCE, redirect-URI rules, ...) | one per realm (`realm` is the key); adopt-then-replace, never created or deleted |
+| `KeycloakClientPolicies` | a realm's client policies (which profiles apply to which clients, e.g. anonymously registered ones) | one per realm (`realm` is the key); adopt-then-replace, never created or deleted |
 | `KeycloakAuthenticationExecution` | one execution/subflow **inside** a flow | `(realm, flowAlias, provider \| alias)` via delegated Snowplow `RESTAction`s |
 | `KeycloakServiceAccountRoleMapping` | the exact set of one client's roles held by another client's service account | `(realm, clientId, roleClientId)` via delegated Snowplow `RESTAction`s |
 
