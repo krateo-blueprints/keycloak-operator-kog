@@ -35,6 +35,12 @@ requiredaction:
 userprofile:
   enabled: true
   kind: KeycloakUserProfile
+clientprofiles:
+  enabled: true
+  kind: KeycloakClientProfiles
+clientpolicies:
+  enabled: true
+  kind: KeycloakClientPolicies
 authenticationexecution:
   enabled: true
   kind: KeycloakAuthenticationExecution

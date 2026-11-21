@@ -1,0 +1,24 @@
+{{- $kogRD := include "keycloak-config-kog.restDefinitions" . | fromYaml }}
+{{- if $kogRD.clientprofiles.enabled }}
+apiVersion: ogen.krateo.io/v1alpha1
+kind: RestDefinition
+metadata:
+  name: {{ .Release.Name }}-clientprofiles
+  labels:
+    {{- include "keycloak-config-kog.labels" . | nindent 4 }}
+spec:
+  oasPath: configmap://{{ .Release.Namespace }}/{{ .Release.Name }}-clientprofiles/clientprofiles.yaml
+  resourceGroup: {{ .Values.resourceGroup }}
+  resource:
+    kind: {{ $kogRD.clientprofiles.kind }}
+    # A realm's client-policies PROFILES (executor bundles a client policy enforces): one document per realm that always exists. No create and no
+    # delete verb, so the kind adopts the realm's document and replaces it (PUT) whenever the CR differs.
+    # Deleting the CR leaves the realm's document as it is. Parent scope: {realm}, the only key.
+    verbsDescription:
+      - action: get
+        method: GET
+        path: /admin/realms/{realm}/client-policies/profiles
+      - action: update
+        method: PUT
+        path: /admin/realms/{realm}/client-policies/profiles
+{{- end }}

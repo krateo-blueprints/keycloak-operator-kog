@@ -1,0 +1,138 @@
+openapi: 3.0.3
+info:
+  title: Keycloak Admin API - Client Policies (KOG subset)
+  version: v1
+  description: |
+    Hand-curated OpenAPI 3.0 subset of the Keycloak Admin REST API for a realm's client POLICIES
+    (ClientPoliciesRepresentation), sufficient to manage them through the Krateo Operator Generator (KOG).
+
+    ONE document per realm that always exists (a new realm starts with `policies: []`): the kind adopts it and
+    replaces it with the CR's on update (PUT); no create, no delete. The CR owns the realm's WHOLE list of
+    (non-global) policies. A policy applies its `profiles` (by name, see KeycloakClientProfiles) to the clients its
+    `conditions` match.
+
+    TYPED, NOT FREE-FORM, for the same reason as KeycloakClientProfiles: Keycloak stores configuration verbatim
+    (measured round-trip on 26.6.3), so the condition id is an enum of the conditions this kind models and
+    `configuration` declares exactly their keys, typed from Keycloak's serverinfo configProperties.
+    Declares the http/bearer security scheme that the upstream Keycloak OAS omits.
+servers:
+- url: '{{ .Values.keycloak.baseUrl }}'
+  description: Keycloak base URL (no trailing slash).
+security:
+- bearer: []
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      description: Keycloak admin access token (OAuth2 Bearer).
+  schemas:
+    ConditionConfiguration:
+      type: object
+      description: Configuration of one condition. Only the keys of the condition named in `condition` apply.
+      properties:
+        is-negative-logic:
+          type: boolean
+          description: Every condition - match when the condition does NOT hold.
+        update-client-source:
+          type: array
+          description: client-updater-context - how the client is being created or updated.
+          items:
+            type: string
+            enum:
+            - ByAuthenticatedUser
+            - ByAnonymous
+            - ByInitialAccessToken
+            - ByRegistrationAccessToken
+        type:
+          type: array
+          description: client-access-type - the access types that match.
+          items:
+            type: string
+            enum:
+            - confidential
+            - public
+            - bearer-only
+    Condition:
+      type: object
+      required:
+      - condition
+      properties:
+        condition:
+          type: string
+          description: Client-policy condition provider id (the ones this kind models).
+          enum:
+          - client-updater-context
+          - client-access-type
+          - any-client
+        configuration:
+          $ref: '#/components/schemas/ConditionConfiguration'
+    ClientPolicy:
+      type: object
+      required:
+      - name
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        enabled:
+          type: boolean
+        conditions:
+          type: array
+          description: The policy applies when ALL conditions match.
+          items:
+            $ref: '#/components/schemas/Condition'
+        profiles:
+          type: array
+          description: Names of the client profiles to enforce (KeycloakClientProfiles).
+          items:
+            type: string
+    ClientPolicies:
+      type: object
+      properties:
+        policies:
+          type: array
+          description: The realm's WHOLE list of (non-global) client policies.
+          items:
+            $ref: '#/components/schemas/ClientPolicy'
+paths:
+  /admin/realms/{realm}/client-policies/policies:
+    get:
+      operationId: getClientpolicies
+      summary: Get the realm's client policies (global policies excluded)
+      tags:
+      - clientpolicies
+      parameters:
+      - name: realm
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientPolicies'
+    put:
+      operationId: updateClientpolicies
+      summary: Replace the realm's client policies
+      tags:
+      - clientpolicies
+      parameters:
+      - name: realm
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientPolicies'
+      responses:
+        '204':
+          description: Stored.

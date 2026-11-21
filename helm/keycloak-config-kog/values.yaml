@@ -102,6 +102,16 @@ restDefinitions:
   userprofile:
     enabled: true
     kind: KeycloakUserProfile
+  # A realm's client-policies PROFILES and POLICIES (Keycloak >= 15): profiles bundle executors (pkce-enforcer,
+  # secure-redirect-uris-enforcer, ...), policies apply profiles to the clients their conditions match (e.g.
+  # client-updater-context ByAnonymous = anonymously registered clients). One document each per realm that always
+  # exists: adopted and replaced as a whole, never created or deleted. The CR owns the realm's WHOLE list.
+  clientprofiles:
+    enabled: true
+    kind: KeycloakClientProfiles
+  clientpolicies:
+    enabled: true
+    kind: KeycloakClientPolicies
   # One execution (or subflow) INSIDE a flow. Keycloak's executions API is
   # create-then-mutate (priority honored at create, immutable afterwards), so
   # this RestDefinition delegates its lifecycle verbs to Snowplow RESTActions
