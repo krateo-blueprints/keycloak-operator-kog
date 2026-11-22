@@ -17,8 +17,11 @@ spec:
       - name
     additionalStatusFields:
       - id
-    excludedSpecFields:
-      - id
+    # `id` is NOT excluded from spec (since 0.14.0): it is an OPTIONAL spec field, sent on create, so a chart can give a
+    # scope a deterministic id and address its mappers (KeycloakClientScopeProtocolMapper {clientScopeId}) up front.
+    # Keycloak honours a caller-chosen client-scope id (measured on 26.6.3). Measured on oasgen 0.80.0 that removing the
+    # exclusion leaves spec.required unchanged (configurationRef, name, realm), so CRs without spec.id are unaffected.
+    # get/update/delete still address the scope by status.id.
     verbsDescription:
       - action: findby
         method: GET

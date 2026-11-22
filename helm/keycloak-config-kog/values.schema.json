@@ -443,6 +443,25 @@
               "default": "KeycloakClientRegistrationPolicy"
             }
           }
+        },
+        "clientscopeprotocolmapper": {
+          "type": "object",
+          "title": "Client scope protocol mapper",
+          "description": "KeycloakClientScopeProtocolMapper RestDefinition: one protocol mapper on a client scope.",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "title": "Enabled",
+              "description": "Emit the KeycloakClientScopeProtocolMapper RestDefinition.",
+              "default": true
+            },
+            "kind": {
+              "type": "string",
+              "title": "Kind",
+              "description": "Kubernetes kind for the generated CRD.",
+              "default": "KeycloakClientScopeProtocolMapper"
+            }
+          }
         }
       }
     },

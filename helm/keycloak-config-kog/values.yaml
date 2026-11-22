@@ -102,6 +102,11 @@ restDefinitions:
   userprofile:
     enabled: true
     kind: KeycloakUserProfile
+  # A protocol mapper on a client SCOPE (Keycloak ignores mappers on a client-scope PUT, so this is the only way to
+  # keep a scope's mappers in sync). Parent: {realm} + {clientScopeId}.
+  clientscopeprotocolmapper:
+    enabled: true
+    kind: KeycloakClientScopeProtocolMapper
   # A realm's client-registration POLICIES (components that constrain dynamic client registration). The realm
   # starts with a default set: a CR naming one adopts it (natural key name + subType); a new name creates one.
   clientregistrationpolicy:

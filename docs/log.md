@@ -11,6 +11,28 @@ timestamp: 2026-08-11T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-22 — KeycloakClientScopeProtocolMapper and an optional KeycloakClientScope id (0.14.0)
+
+**Why.** Anonymously registered agent clients get their audience, groups and username claims from a shared client scope
+(`mcp`), and the audience follows a cluster's hostname, so the scope's mappers must stay in sync. Keycloak ignores
+`protocolMappers` on a client-scope PUT (and `defaultClientScopes` on a client PUT): both are create-only (measured on
+26.6.3). Client PUTs DO update inline `protocolMappers`.
+
+**What.** `KeycloakClientScopeProtocolMapper` (CRUD on `/client-scopes/{clientScopeId}/protocol-mappers/models`, findby on
+`name`, `partialFields: config`), and `KeycloakClientScope` `spec.id` (optional, sent on create) so a chart can give a scope
+a deterministic id. Removing `id` from the scope's excludedSpecFields left `spec.required` unchanged (measured on oasgen
+0.80.0), so existing CRs are unaffected.
+
+**Validated live on kc-roll057** (oasgen 0.80.0, throwaway realm, test variants removed afterwards): a scope created with a
+chosen id got exactly that id; three scope mappers (audience, groups, username) created; an audience change in the CR
+reached Keycloak; across two resyncs only `External resource is up to date`; a hand overwrite reverted in 62 s; deleting
+one mapper CR removed only that mapper.
+
+**A false alarm, recorded so it is not repeated.** A raw `PUT .../protocol-mappers/models/{id}` without `id` in the body
+returns 500, which read as "KeycloakProtocolMapper updates never worked". Live, the installed kind updates fine: with
+`partialFields` the rdc merges Keycloak's current object, `id` included, into the PUT body. A raw-API imitation of the
+rdc is not the rdc; no change was made to `KeycloakProtocolMapper`.
+
 ## 2026-11-22 — KeycloakClientRegistrationPolicy (0.13.0)
 
 **Why.** The third kind for personal-agent sign-in: anonymous dynamic client registration has to be limited to
