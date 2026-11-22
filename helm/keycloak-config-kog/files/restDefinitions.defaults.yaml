@@ -35,6 +35,9 @@ requiredaction:
 userprofile:
   enabled: true
   kind: KeycloakUserProfile
+clientscopeprotocolmapper:
+  enabled: true
+  kind: KeycloakClientScopeProtocolMapper
 clientregistrationpolicy:
   enabled: true
   kind: KeycloakClientRegistrationPolicy

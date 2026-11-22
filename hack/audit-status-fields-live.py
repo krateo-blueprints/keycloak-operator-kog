@@ -183,7 +183,8 @@ def live():
     audited = set(rds) - delegated - none_declared
     fixtures = {"KeycloakRealm", "KeycloakClient", "KeycloakClientScope", "KeycloakGroup", "KeycloakUser",
                 "KeycloakIdentityProvider", "KeycloakIdentityProviderMapper", "KeycloakProtocolMapper",
-                "KeycloakAuthenticationFlow", "KeycloakUserProfile", "KeycloakClientRegistrationPolicy"}
+                "KeycloakAuthenticationFlow", "KeycloakUserProfile", "KeycloakClientRegistrationPolicy",
+                "KeycloakClientScopeProtocolMapper"}
     # Reconciled BEFORE creating anything: a new or renamed kind is reported, not a mid-run crash.
     missing = audited - fixtures
     R = f"/admin/realms/{REALM}"
@@ -199,6 +200,11 @@ def live():
         cid = created(st, loc, "client"); params["KeycloakClient"] = dict(p, id=cid)
         st, _, loc = raw("POST", f"{R}/client-scopes", {"name": "audit-scope", "protocol": "openid-connect"})
         params["KeycloakClientScope"] = dict(p, id=created(st, loc, "client scope"))
+        sid = params["KeycloakClientScope"]["id"]
+        st, _, loc = raw("POST", f"{R}/client-scopes/{sid}/protocol-mappers/models", {
+            "name": "audit-scope-pm", "protocol": "openid-connect", "protocolMapper": "oidc-hardcoded-claim-mapper",
+            "config": {"claim.name": "c", "claim.value": "v", "access.token.claim": "true"}})
+        params["KeycloakClientScopeProtocolMapper"] = dict(p, clientScopeId=sid, id=created(st, loc, "client scope protocol mapper"))
         st, _, loc = raw("POST", f"{R}/groups", {"name": "audit-group"})
         params["KeycloakGroup"] = dict(p, id=created(st, loc, "group"))
         st, _, loc = raw("POST", f"{R}/users", {"username": "audit-user", "enabled": True})

@@ -1,0 +1,53 @@
+{{- $kogRD := include "keycloak-config-kog.restDefinitions" . | fromYaml }}
+{{- if $kogRD.clientscopeprotocolmapper.enabled }}
+apiVersion: ogen.krateo.io/v1alpha1
+kind: RestDefinition
+metadata:
+  name: {{ .Release.Name }}-clientscopeprotocolmapper
+  labels:
+    {{- include "keycloak-config-kog.labels" . | nindent 4 }}
+spec:
+  oasPath: configmap://{{ .Release.Namespace }}/{{ .Release.Name }}-clientscopeprotocolmapper/clientscopeprotocolmapper.yaml
+  resourceGroup: {{ .Values.resourceGroup }}
+  resource:
+    kind: {{ $kogRD.clientscopeprotocolmapper.kind }}
+    # A protocol mapper on a CLIENT SCOPE (Keycloak ignores protocolMappers on a client-scope PUT, measured, so a
+    # scope's mappers are only manageable here). `name` is the natural key; the UUID {id} is resolved via findby and
+    # excluded from spec. Parent path params {realm} and {clientScopeId} auto-surface as spec fields; a chart can give
+    # the scope a deterministic id (KeycloakClientScope spec.id) so it knows {clientScopeId} up front.
+    identifiers:
+      - name
+    additionalStatusFields:
+      - id
+    excludedSpecFields:
+      - id
+    verbsDescription:
+      - action: findby
+        method: GET
+        path: /admin/realms/{realm}/client-scopes/{clientScopeId}/protocol-mappers/models
+      - action: create
+        method: POST
+        path: /admin/realms/{realm}/client-scopes/{clientScopeId}/protocol-mappers/models
+      - action: get
+        method: GET
+        path: /admin/realms/{realm}/client-scopes/{clientScopeId}/protocol-mappers/models/{id}
+        requestFieldMapping:
+          - inPath: id
+            inCustomResource: status.id
+      - action: update
+        method: PUT
+        path: /admin/realms/{realm}/client-scopes/{clientScopeId}/protocol-mappers/models/{id}
+        # Keycloak fills this map with server-side keys the CR does not declare; the PUT would send it
+        # whole and delete them. Merged with what Keycloak holds (oasgen-provider >= 0.76.0, #737).
+        partialFields:
+          - config
+        requestFieldMapping:
+          - inPath: id
+            inCustomResource: status.id
+      - action: delete
+        method: DELETE
+        path: /admin/realms/{realm}/client-scopes/{clientScopeId}/protocol-mappers/models/{id}
+        requestFieldMapping:
+          - inPath: id
+            inCustomResource: status.id
+{{- end }}

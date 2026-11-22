@@ -35,7 +35,8 @@ components:
             type: string
         id:
           type: string
-          description: Server-generated identifier (read-only).
+          description: Optional, set only at creation. Leave unset for a server-generated id, or give a fixed UUID so
+            charts can address the scope's mappers (KeycloakClientScopeProtocolMapper clientScopeId) up front.
           readOnly: true
 paths:
   /admin/realms/{realm}/client-scopes:

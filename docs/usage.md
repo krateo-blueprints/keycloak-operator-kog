@@ -395,6 +395,47 @@ spec:
   config: {}
 ```
 
+
+## Client scope mappers and fixed scope ids (0.14.0)
+
+Keycloak **ignores `protocolMappers` on a client-scope update** (measured on 26.6.3: a `PUT /client-scopes/{id}` with a
+changed mapper list returns 204 and changes nothing). A scope's mappers are therefore managed one by one with
+`KeycloakClientScopeProtocolMapper`, under `realm` + `clientScopeId`, the same shape as `KeycloakProtocolMapper` for
+clients.
+
+To address a scope's mappers without looking the scope up, give the scope a **fixed id**: `KeycloakClientScope` takes an
+optional `spec.id`, sent only on create (Keycloak honours a caller-chosen client-scope id, measured). Leave it unset for a
+server-generated id; existing CRs are unaffected (it is optional).
+
+```yaml
+apiVersion: keycloak.ogen.krateo.io/v1
+kind: KeycloakClientScope
+metadata:
+  name: krateo-mcp
+spec:
+  configurationRef: {name: keycloak-admin, namespace: krateo-system}
+  realm: krateo
+  id: 5e7d2c1a-3b4f-5a6e-8d9c-0b1a2c3d4e5f    # fixed, so the mappers below can name it
+  name: mcp
+  protocol: openid-connect
+---
+apiVersion: keycloak.ogen.krateo.io/v1
+kind: KeycloakClientScopeProtocolMapper
+metadata:
+  name: krateo-mcp-audience
+spec:
+  configurationRef: {name: keycloak-admin, namespace: krateo-system}
+  realm: krateo
+  clientScopeId: 5e7d2c1a-3b4f-5a6e-8d9c-0b1a2c3d4e5f
+  name: mcp-audience
+  protocol: openid-connect
+  protocolMapper: oidc-audience-mapper
+  config:
+    included.custom.audience: https://cmp.example.com/mcp
+    access.token.claim: "true"
+    id.token.claim: "false"
+```
+
 ## Verify the admin-token path
 
 ESO mints a fresh admin bearer token from Keycloak's token endpoint into
