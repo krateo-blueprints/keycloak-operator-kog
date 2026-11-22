@@ -37,6 +37,11 @@ spec:
       - action: findby
         method: GET
         path: /admin/realms/{realm}/components
+        # AND, not the default OR: with OR the findby returns on the FIRST identifier that agrees (`name`) and never
+        # compares `subType`, so a CR for the authenticated "Allowed Client Scopes" would adopt the anonymous one
+        # (measured on kc-roll057: rdc logged "findby adopted an external resource on a SUBSET of the declared
+        # identifiers ... notConsulted [subType]"). AND requires name AND subType to agree.
+        identifiersMatchPolicy: AND
       - action: create
         method: POST
         path: /admin/realms/{realm}/components
