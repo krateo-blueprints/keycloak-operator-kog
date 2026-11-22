@@ -1,0 +1,57 @@
+{{- $kogRD := include "keycloak-config-kog.restDefinitions" . | fromYaml }}
+{{- if $kogRD.clientoptionalclientscope.enabled }}
+apiVersion: ogen.krateo.io/v1alpha1
+kind: RestDefinition
+metadata:
+  name: {{ .Release.Name }}-clientoptionalclientscope
+  labels:
+    {{- include "keycloak-config-kog.labels" . | nindent 4 }}
+spec:
+  oasPath: configmap://{{ .Release.Namespace }}/{{ .Release.Name }}-clientoptionalclientscope/clientoptionalclientscope.yaml
+  resourceGroup: {{ .Values.resourceGroup }}
+  resource:
+    kind: {{ $kogRD.clientoptionalclientscope.kind }}
+    identifiers:
+      - realm
+      - clientId
+      - clientScope
+    additionalStatusFields:
+      - found
+      - clientUuid
+      - clientScopeId
+    # Server-generated path params, resolved by the RESTActions: never part of the spec.
+    excludedSpecFields:
+      - clientUuid
+      - clientScopeId
+    verbsDescription:
+      - action: create
+        method: PUT
+        path: /admin/realms/{realm}/clients/{clientUuid}/optional-client-scopes/{clientScopeId}
+      # NO get verb: Keycloak has no per-assignment GET (404 whether assigned or not, measured on 26.6.3), and a
+      # get on the client's optional list always answers 200, which the controller's delete verification would
+      # read as "still present" and hold the finalizer forever. Existence is the observe's membership test below,
+      # and the delete RESTAction verifies its own outcome (see restactions-clientoptionalclientscope.yaml).
+    observeApiRef:
+      name: {{ .Release.Name }}-clientoptionalclientscope-observe
+      namespace: {{ .Release.Namespace }}
+      notFoundExpr:
+        inline: '(.status.found // false) | not'
+      # Without a get/findby the generator types every additionalStatusFields entry as string and the status
+      # write is refused (oasgen-provider #889); the observe's own shape is declared here.
+      statusSchema:
+        found: boolean
+        clientUuid: string
+        clientScopeId: string
+      # An assignment is binary: once found it cannot drift.
+      upToDateExpr:
+        inline: 'true'
+    createApiRef:
+      name: {{ .Release.Name }}-clientoptionalclientscope-apply
+      namespace: {{ .Release.Namespace }}
+    updateApiRef:
+      name: {{ .Release.Name }}-clientoptionalclientscope-apply
+      namespace: {{ .Release.Namespace }}
+    deleteApiRef:
+      name: {{ .Release.Name }}-clientoptionalclientscope-delete
+      namespace: {{ .Release.Namespace }}
+{{- end }}

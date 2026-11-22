@@ -5,7 +5,8 @@
 {{- /*
 What each RESTAction-delegated kind needs beyond its RestDefinition and RESTActions, so nobody
 applies it by hand. The delegated kinds are KeycloakAuthenticationExecution (four RESTActions:
-observe/create/update/delete) and KeycloakServiceAccountRoleMapping (three: observe/apply/delete).
+observe/create/update/delete), KeycloakServiceAccountRoleMapping and KeycloakClientOptionalClientScope
+(three each: observe/apply/delete).
 For every enabled one:
 
   1. an authn ServiceAccount allowlist CR: the kind's controller may exchange its projected
@@ -26,6 +27,9 @@ keeps them.
 {{- end }}
 {{- if $kogRD.serviceaccountrolemapping.enabled }}
 {{- $delegated = append $delegated (dict "key" "serviceaccountrolemapping" "kind" $kogRD.serviceaccountrolemapping.kind "actions" (list "observe" "apply" "delete")) }}
+{{- end }}
+{{- if $kogRD.clientoptionalclientscope.enabled }}
+{{- $delegated = append $delegated (dict "key" "clientoptionalclientscope" "kind" $kogRD.clientoptionalclientscope.kind "actions" (list "observe" "apply" "delete")) }}
 {{- end }}
 {{- if and $delegated (ne (toString $ei.enabled) "false") }}
 {{- $group := $ei.group | default "krateo:rdc" }}

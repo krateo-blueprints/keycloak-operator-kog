@@ -23,6 +23,19 @@ spec:
     excludedSpecFields:
       - id
       - parentId
+    # A declared config key MISSING from Keycloak's object is drift (oasgen-provider #886; the default ignores it).
+    # Keycloak's default policies omit keys (Allowed Client Scopes has no allowed-client-scopes), so without this an
+    # adopted policy read Ready while its restriction was never sent (measured on kc-roll057, 0.80.0-0.88.0). Keycloak
+    # echoes every non-empty key it is given and stores an EMPTY list as absent (measured on 26.6.3).
+    requirePresentFields:
+      - config.trusted-hosts
+      - config.host-sending-registration-request-must-match
+      - config.client-uris-must-match
+      - config.allowed-client-scopes
+      - config.allow-default-scopes
+      - config.allowed-protocol-mapper-types
+      - config.max-clients
+      - config.web-origins
     # The component type is a constant sent on the findby from the Configuration CR
     # (spec.configuration.query.findby.type = org.keycloak.services.clientregistration.policy.ClientRegistrationPolicy),
     # never a CR field, so a CR cannot list another component type.

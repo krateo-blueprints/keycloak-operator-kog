@@ -435,6 +435,112 @@ check("get path params come from status",
       {(m["inPath"], m["inCustomResource"]) for m in S_GET["fieldMapping"]}
       == {("userId", "status.userId"), ("roleClientUuid", "status.roleClientUuid")})
 
+
+# ===========================================================================
+# KeycloakClientOptionalClientScope (observe / apply / delete RESTActions, NO get verb)
+# ===========================================================================
+print()
+print("KeycloakClientOptionalClientScope")
+oras = {d["metadata"]["name"].split("-clientoptionalclientscope-")[-1]: d
+        for d in docs if d.get("kind") == "RESTAction" and "clientoptionalclientscope" in d["metadata"]["name"]}
+check("rendered RESTActions observe/apply/delete", set(oras) == {"observe", "apply", "delete"}, sorted(oras))
+ord_ = next(d for d in docs if d.get("kind") == "RestDefinition" and d["metadata"]["name"].endswith("clientoptionalclientscope"))
+ores = ord_["spec"]["resource"]
+check("no get verb (Keycloak has no per-assignment GET; rdc does not consult get for observeApiRef kinds)",
+      [v["action"] for v in ores["verbsDescription"]] == ["create"], [v["action"] for v in ores["verbsDescription"]])
+check("create and update both delegate to the apply RESTAction",
+      ores["createApiRef"]["name"] == ores["updateApiRef"]["name"] == "kog-clientoptionalclientscope-apply")
+O_NOT_FOUND = ores["observeApiRef"]["notFoundExpr"]["inline"]; O_UP = ores["observeApiRef"]["upToDateExpr"]["inline"]
+OFX = json.load(open(os.path.join(FIXTURES, "clientoptionalclientscope.json")))
+OSPEC = {"realm": "krateo", "clientId": "krateo-ide", "clientScope": "mcp"}
+OO = {s["name"]: s for s in oras["observe"]["spec"]["api"]}
+OA = {s["name"]: s for s in oras["apply"]["spec"]["api"]}
+OD = {s["name"]: s for s in oras["delete"]["spec"]["api"]}
+
+
+def ox(**stages):
+    d = {"name": "ide-mcp", "namespace": "kogns", "realm": "krateo", "clientId": "krateo-ide", "clientScope": "mcp", "spec": OSPEC}
+    d.update(stages)
+    return d
+
+
+check("observe chain order client -> scope -> assigned",
+      [s["name"] for s in oras["observe"]["spec"]["api"]] == ["client", "scope", "assigned"])
+check("client lookup path is the exact clientId query",
+      jq(unwrap(OO["client"]["path"]), ox()) == "/admin/realms/krateo/clients?clientId=krateo-ide")
+items = jq(OO["assigned"]["dependsOn"]["iterator"], ox(client=OFX["client"], scope=OFX["scope"]))
+check("assigned iterator resolves the EXACT clientId (not a near-miss)", items == [{"realm": "krateo", "id": "c-ide"}], items)
+check("assigned path", jq(unwrap(OO["assigned"]["path"]), items[0]) == "/admin/realms/krateo/clients/c-ide/optional-client-scopes")
+OF2 = oras["observe"]["spec"]["filter"]
+st = jq(OF2, ox(client=OFX["client"], scope=OFX["scope"], assigned=OFX["assigned_with_mcp"]))
+check("assigned -> found with both ids, and up to date",
+      st == {"found": True, "clientUuid": "c-ide", "clientScopeId": "s-mcp"}
+      and jq(O_NOT_FOUND, {"spec": OSPEC, "status": st}) is False and jq(O_UP, {"spec": OSPEC, "status": st}) is True, st)
+st = jq(OF2, ox(client=OFX["client"], scope=OFX["scope"], assigned=OFX["assigned_without_mcp"]))
+check("not assigned (a similarly named scope is) -> notFound (create)",
+      st.get("found") is False and jq(O_NOT_FOUND, {"spec": OSPEC, "status": st}) is True, st)
+for desc, kw in (("client not created yet", dict(client=[], scope=OFX["scope"])),
+                 ("scope not created yet", dict(client=OFX["client"], scope=[OFX["scope"][2]], assigned=OFX["assigned_with_mcp"])),
+                 ("realm not created yet (404 on every lookup)", dict(clientError=[{"code": 404}], scopeError=[{"code": 404}]))):
+    st = jq(OF2, ox(**kw))
+    check(f"{desc} -> {{found:false}} -> notFound", st == {"found": False} and jq(O_NOT_FOUND, {"spec": OSPEC, "status": st}) is True, st)
+
+
+def raises(program, data):
+    """True when the jq program raises: snowplow then fails the resolve, so the controller neither reads an unknown
+    as absent (observe) nor releases the finalizer (delete)."""
+    return sh(["jq", "-c", program], input=json.dumps(data)).returncode != 0
+
+
+for desc, kw in (("client lookup 401", dict(clientError=[{"code": 401}], scope=OFX["scope"])),
+                 ("scope lookup 503", dict(client=OFX["client"], scopeError=[{"code": 503}], assigned=OFX["assigned_without_mcp"])),
+                 ("optional list read failed (500)", dict(client=OFX["client"], scope=OFX["scope"], assignedError=[{"code": 500}])),
+                 ("a transport failure recorded as plain text", dict(clientError=["dial tcp: refused"], scope=OFX["scope"])),
+                 ("a 404 next to a 500", dict(clientError=[{"code": 404}], scopeError=[{"code": 500}]))):
+    check(f"observe: {desc} -> raises, never absent", raises(OF2, ox(**kw)))
+check("apply: resolution stages fail hard (no continueOnError before the mutation)",
+      all(not OA[n].get("continueOnError") for n in ("client", "scope")))
+items = jq(OA["assign"]["dependsOn"]["iterator"], ox(client=OFX["client"], scope=OFX["scope"]))
+check("assign: one PUT to the resolved ids, no payload",
+      items == [{"realm": "krateo", "cu": "c-ide", "sid": "s-mcp"}] and OA["assign"].get("verb") == "PUT" and "payload" not in OA["assign"]
+      and jq(unwrap(OA["assign"]["path"]), items[0]) == "/admin/realms/krateo/clients/c-ide/optional-client-scopes/s-mcp", items)
+check("assign: client or scope missing -> skipped (no-op)",
+      jq(OA["assign"]["dependsOn"]["iterator"], ox(client=[], scope=OFX["scope"])) == []
+      and jq(OA["assign"]["dependsOn"]["iterator"], ox(client=OFX["client"], scope=[])) == [])
+items = jq(OD["unassign"]["dependsOn"]["iterator"], ox(client=OFX["client"], scope=OFX["scope"]))
+check("unassign: one DELETE of exactly this assignment (other optional scopes untouched)",
+      items == [{"realm": "krateo", "cu": "c-ide", "sid": "s-mcp"}] and OD["unassign"].get("verb") == "DELETE"
+      and jq(unwrap(OD["unassign"]["path"]), items[0]) == "/admin/realms/krateo/clients/c-ide/optional-client-scopes/s-mcp", items)
+check("delete chain: client -> scope -> unassign -> verify",
+      [x["name"] for x in oras["delete"]["spec"]["api"]] == ["client", "scope", "unassign", "verify"]
+      and OD["verify"]["dependsOn"]["name"] == "unassign" and "verb" not in OD["verify"])
+DF = oras["delete"]["spec"]["filter"]
+both = dict(client=OFX["client"], scope=OFX["scope"])
+items = jq(OD["verify"]["dependsOn"]["iterator"], ox(**both))
+check("verify: re-reads the client's optional scopes", items == [{"realm": "krateo", "id": "c-ide"}]
+      and jq(unwrap(OD["verify"]["path"]), items[0]) == "/admin/realms/krateo/clients/c-ide/optional-client-scopes", items)
+check("delete: the scope is gone from the list -> released", jq(DF, ox(**both, verify=OFX["assigned_without_mcp"])) == {})
+check("delete: the scope is STILL assigned -> raises (finalizer held)", raises(DF, ox(**both, verify=OFX["assigned_with_mcp"])))
+for desc, kw in (("client lookup 401", dict(clientError=[{"code": 401}])), ("scope lookup 500", dict(client=OFX["client"], scopeError=[{"code": 500}])),
+                 ("DELETE 403", dict(**both, unassignError=[{"code": 403}], verify=OFX["assigned_without_mcp"])),
+                 ("verification read 503", dict(**both, verifyError=[{"code": 503}]))):
+    check(f"delete: {desc} -> raises (finalizer held)", raises(DF, ox(**kw)))
+for desc, kw in (("realm gone (404s)", dict(clientError=[{"code": 404}], scopeError=[{"code": 404}])), ("client gone", dict(client=[], scope=OFX["scope"])),
+                 ("client deleted mid-way (404 on DELETE and re-read)", dict(**both, unassignError=[{"code": 404}], verifyError=[{"code": 404}]))):
+    check(f"delete: {desc} -> released", jq(DF, ox(**kw)) == {})
+check("status is typed by statusSchema, covering exactly the composed fields",
+      ores["observeApiRef"].get("statusSchema") == {"found": "boolean", "clientUuid": "string", "clientScopeId": "string"}
+      and sorted(ores["additionalStatusFields"]) == sorted(ores["observeApiRef"]["statusSchema"]))
+crp = next(d for d in docs if d.get("kind") == "RestDefinition" and d["metadata"]["name"].endswith("-clientregistrationpolicy"))
+crpoas = yaml.safe_load(next(d for d in docs if d.get("kind") == "ConfigMap" and d["metadata"]["name"].endswith("-clientregistrationpolicy"))["data"]["clientregistrationpolicy.yaml"])
+cfgkeys = crpoas["components"]["schemas"]["PolicyConfig"]["properties"]
+check("KeycloakClientRegistrationPolicy: every config key is requirePresentFields (a key Keycloak lacks is drift)",
+      sorted(crp["spec"]["resource"]["requirePresentFields"]) == sorted("config." + k for k in cfgkeys))
+check("KeycloakClientRegistrationPolicy: an empty list stays legal (the only way to clear a key)",
+      "minItems" not in crpoas["components"]["schemas"]["StringList"])
+check("unassign: client or scope already gone -> no-op",
+      jq(OD["unassign"]["dependsOn"]["iterator"], ox(client=[], scope=OFX["scope"])) == [])
+
 # ---------------------------------------------------------------------------
 print()
 if FAILS:

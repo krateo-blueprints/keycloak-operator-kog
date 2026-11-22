@@ -53,3 +53,6 @@ authenticationexecution:
 serviceaccountrolemapping:
   enabled: true
   kind: KeycloakServiceAccountRoleMapping
+clientoptionalclientscope:
+  enabled: true
+  kind: KeycloakClientOptionalClientScope

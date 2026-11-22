@@ -196,6 +196,20 @@ components:
           type: integer
           format: int32
           description: SSO max lifespan (seconds) for a Remember me session; 0 = use ssoSessionMaxLifespan.
+        offlineSessionIdleTimeout:
+          type: integer
+          format: int32
+          description: Offline session idle timeout (seconds); an offline token unused for longer is invalid.
+            Keycloak's default is 2592000 (30 days).
+        offlineSessionMaxLifespanEnabled:
+          type: boolean
+          description: Whether offline sessions have a maximum lifespan (offlineSessionMaxLifespan). Keycloak's
+            default is false, so an offline session that keeps being used never expires.
+        offlineSessionMaxLifespan:
+          type: integer
+          format: int32
+          description: Maximum lifespan (seconds) of an offline session, from its creation, when
+            offlineSessionMaxLifespanEnabled is true. Keycloak's default is 5184000 (60 days).
         internationalizationEnabled:
           type: boolean
         defaultLocale:

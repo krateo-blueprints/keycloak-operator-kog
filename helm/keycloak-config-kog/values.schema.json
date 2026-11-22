@@ -462,6 +462,25 @@
               "default": "KeycloakClientScopeProtocolMapper"
             }
           }
+        },
+        "clientoptionalclientscope": {
+          "type": "object",
+          "title": "Client optional client scope",
+          "description": "KeycloakClientOptionalClientScope RestDefinition: one client scope assigned to one client as an optional scope. Lifecycle verbs are delegated to Snowplow RESTActions because Keycloak ignores optionalClientScopes on a client update and addresses the assignment only by server UUIDs.",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "title": "Enabled",
+              "description": "Emit the KeycloakServiceAccountRoleMapping RestDefinition plus its backing RESTActions.",
+              "default": true
+            },
+            "kind": {
+              "type": "string",
+              "title": "Kind",
+              "description": "Kubernetes kind for the generated CRD.",
+              "default": "KeycloakClientOptionalClientScope"
+            }
+          }
         }
       }
     },

@@ -80,6 +80,7 @@ Each resource CR references its Configuration via `spec.configurationRef`.
 | `KeycloakClientPolicies` | GET + PUT on `…/client-policies/policies` (0.12.0) | one per realm, no identifiers: adopts the realm's (non-global) policies and replaces them whole; no create, no delete |
 | `KeycloakClientRegistrationPolicy` | CRUD on `…/components` (0.13.0) | natural key `name` + `subType` (findby `identifiersMatchPolicy: AND`; the type is a Configuration-CR constant): naming a realm default adopts it, a new name creates one |
 | `KeycloakClientScopeProtocolMapper` | CRUD on `…/client-scopes/{clientScopeId}/protocol-mappers/models` (0.14.0) | natural key `name`; parent `realm` + `clientScopeId` (give the scope a fixed id with `KeycloakClientScope` `spec.id`) |
+| `KeycloakClientOptionalClientScope` | assign/unassign on `…/clients/{uuid}/optional-client-scopes/{scopeId}`, delegated to RESTActions (0.15.0) | natural key `realm` + `clientId` + `clientScope` (the human names; the UUIDs are resolved) |
 | `KeycloakAuthenticationExecution` | delegated — see below | `(realm, flowAlias, provider \| alias)` |
 | `KeycloakServiceAccountRoleMapping` | delegated — see below (0.8.0) | `(realm, clientId, roleClientId)` |
 
