@@ -183,7 +183,7 @@ def live():
     audited = set(rds) - delegated - none_declared
     fixtures = {"KeycloakRealm", "KeycloakClient", "KeycloakClientScope", "KeycloakGroup", "KeycloakUser",
                 "KeycloakIdentityProvider", "KeycloakIdentityProviderMapper", "KeycloakProtocolMapper",
-                "KeycloakAuthenticationFlow", "KeycloakUserProfile"}
+                "KeycloakAuthenticationFlow", "KeycloakUserProfile", "KeycloakClientRegistrationPolicy"}
     # Reconciled BEFORE creating anything: a new or renamed kind is reported, not a mid-run crash.
     missing = audited - fixtures
     R = f"/admin/realms/{REALM}"
@@ -221,6 +221,10 @@ def live():
         st, _, loc = raw("POST", f"{R}/authentication/flows", {"alias": "audit-flow", "providerId": "basic-flow",
                                                               "topLevel": True, "builtIn": False})
         params["KeycloakAuthenticationFlow"] = dict(p, id=created(st, loc, "authentication flow"))
+        st, _, loc = raw("POST", f"{R}/components", {
+            "name": "audit-crp", "providerId": "client-disabled", "subType": "anonymous", "config": {},
+            "providerType": "org.keycloak.services.clientregistration.policy.ClientRegistrationPolicy"})
+        params["KeycloakClientRegistrationPolicy"] = dict(p, id=created(st, loc, "client registration policy"))
 
         def call(method, path):
             st, body, _ = raw(method, path)

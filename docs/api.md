@@ -78,6 +78,7 @@ Each resource CR references its Configuration via `spec.configurationRef`.
 | `KeycloakUserProfile` | GET + PUT on `…/users/profile` (0.7.0) | one per realm, no identifiers: adopts the realm's profile and replaces it whole; no create, no delete |
 | `KeycloakClientProfiles` | GET + PUT on `…/client-policies/profiles` (0.12.0) | one per realm, no identifiers: adopts the realm's (non-global) profiles and replaces them whole; no create, no delete |
 | `KeycloakClientPolicies` | GET + PUT on `…/client-policies/policies` (0.12.0) | one per realm, no identifiers: adopts the realm's (non-global) policies and replaces them whole; no create, no delete |
+| `KeycloakClientRegistrationPolicy` | CRUD on `…/components` (0.13.0) | natural key `name` + `subType` (findby `identifiersMatchPolicy: AND`; the type is a Configuration-CR constant): naming a realm default adopts it, a new name creates one |
 | `KeycloakAuthenticationExecution` | delegated — see below | `(realm, flowAlias, provider \| alias)` |
 | `KeycloakServiceAccountRoleMapping` | delegated — see below (0.8.0) | `(realm, clientId, roleClientId)` |
 

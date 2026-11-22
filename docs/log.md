@@ -11,6 +11,29 @@ timestamp: 2026-08-11T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-22 — KeycloakClientRegistrationPolicy (0.13.0)
+
+**Why.** The third kind for personal-agent sign-in: anonymous dynamic client registration has to be limited to
+loopback redirects and the `mcp` scope, and registered clients must start disabled (Diego's decision).
+
+**Measured first** (Keycloak 26.6.3, throwaway realms, deleted): the realm's internal id is a UUID, not its name, and a
+POST without `parentId` attaches the component to the realm; the 201 Location ends in the new id; a PUT with only the
+spec fields (no id, no parentId) is accepted and keeps the component under the realm; config round-trips exactly as
+lists of strings; `GET ...?name=` returns BOTH subTypes of a default and a `subType` parameter is ignored.
+
+**One defect found live and fixed before release.** With the default `identifiersMatchPolicy` (OR) the findby returned on
+the first identifier that agreed (`name`) and never compared `subType` (rdc: "findby adopted an external resource on a
+SUBSET of the declared identifiers ... notConsulted [subType]"); it adopted the right twin only because the anonymous one
+is listed first. The findby now declares `identifiersMatchPolicy: AND`, proved by a CR for the authenticated
+`Allowed Client Scopes` adopting the authenticated component (status.id equal), not the anonymous one.
+
+**Validated live on kc-roll057** (oasgen 0.80.0): two anonymous defaults adopted by name + subType and updated
+(`Trusted Hosts` to loopback-only, `Allowed Client Scopes` to `mcp` only), the authenticated twin adopted and left as it
+was, a new `client-disabled` component created; every CR's status.id equals the Keycloak component it should own;
+across two resyncs only `External resource is up to date`; a hand overwrite reverted in 139 s with one update; deleting
+the CRs removed only the created component (`delete`) and kept the adopted ones (`orphan`). A first run's update of
+`Allowed Client Scopes` was refused by Keycloak because the test realm had no `mcp` scope: documented in usage.
+
 ## 2026-11-21 — KeycloakClientProfiles and KeycloakClientPolicies (0.12.0)
 
 **Why.** Personal agents (OpenClaw via anonymous dynamic client registration, Hermes pre-registered) will sign in to

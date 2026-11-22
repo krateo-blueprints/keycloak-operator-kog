@@ -102,6 +102,11 @@ restDefinitions:
   userprofile:
     enabled: true
     kind: KeycloakUserProfile
+  # A realm's client-registration POLICIES (components that constrain dynamic client registration). The realm
+  # starts with a default set: a CR naming one adopts it (natural key name + subType); a new name creates one.
+  clientregistrationpolicy:
+    enabled: true
+    kind: KeycloakClientRegistrationPolicy
   # A realm's client-policies PROFILES and POLICIES (Keycloak >= 15): profiles bundle executors (pkce-enforcer,
   # secure-redirect-uris-enforcer, ...), policies apply profiles to the clients their conditions match (e.g.
   # client-updater-context ByAnonymous = anonymously registered clients). One document each per realm that always

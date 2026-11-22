@@ -424,6 +424,25 @@
               "default": "KeycloakClientPolicies"
             }
           }
+        },
+        "clientregistrationpolicy": {
+          "type": "object",
+          "title": "Client registration policy",
+          "description": "KeycloakClientRegistrationPolicy RestDefinition: one client-registration policy component (adopts the realm's defaults by name + subType).",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "title": "Enabled",
+              "description": "Emit the KeycloakClientRegistrationPolicy RestDefinition.",
+              "default": true
+            },
+            "kind": {
+              "type": "string",
+              "title": "Kind",
+              "description": "Kubernetes kind for the generated CRD.",
+              "default": "KeycloakClientRegistrationPolicy"
+            }
+          }
         }
       }
     },

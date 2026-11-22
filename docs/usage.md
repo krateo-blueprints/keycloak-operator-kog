@@ -326,6 +326,75 @@ spec:
       profiles: [agent-dcr]
 ```
 
+
+## Client registration policies (0.13.0)
+
+Dynamic client registration (`/realms/<realm>/clients-registrations/...`) is constrained by **client registration
+policies**: Keycloak components of providerType `org.keycloak.services.clientregistration.policy.ClientRegistrationPolicy`,
+each with a `subType` of `anonymous` (no token) or `authenticated` (an initial access or registration token).
+`KeycloakClientRegistrationPolicy` manages one.
+
+A new realm **already has a default set** (Keycloak 26.6.3): `Trusted Hosts`, `Consent Required`, `Full Scope Disabled`,
+`Max Clients Limit`, `Allowed Client Scopes`, `Allowed Protocol Mapper Types` and `Allowed Registration Web Origins` for
+`anonymous`, and the last three again for `authenticated`. So **a CR naming a default adopts it** and replaces its
+config; a CR with a new name creates a new component. The natural key is `name` **and** `subType`, matched with
+`identifiersMatchPolicy: AND`: the same name exists for both subTypes and Keycloak ignores a subType filter, so a
+name-only match would adopt the wrong twin (measured).
+
+- **Adopting a default: set `krateo.io/deletion-policy: orphan`.** Deleting a CR with the default `delete` policy
+  removes the component, so deleting the CR for an adopted `Trusted Hosts` would remove that constraint from the realm.
+- `config` values are **lists of strings**, as Keycloak stores them (`["true"]`, `["200"]`), and round-trip exactly.
+- The component type is a constant from the Configuration CR (`spec.configuration.query.findby.type`), so a CR can never
+  list or adopt another kind of component.
+- `allowed-client-scopes` names must exist in the realm; Keycloak refuses the update otherwise (measured).
+
+Example: anonymous registration limited to loopback hosts and the `mcp` scope, with new clients created disabled:
+
+```yaml
+apiVersion: keycloak.ogen.krateo.io/v1alpha1
+kind: KeycloakClientRegistrationPolicyConfiguration
+metadata:
+  name: keycloak-admin
+spec:
+  authentication:
+    bearer:
+      tokenRef: {name: keycloak-admin-token, key: token, namespace: krateo-system}
+  configuration:
+    query:
+      findby:
+        type: org.keycloak.services.clientregistration.policy.ClientRegistrationPolicy
+---
+apiVersion: keycloak.ogen.krateo.io/v1
+kind: KeycloakClientRegistrationPolicy
+metadata:
+  name: krateo-anon-trusted-hosts
+  annotations: {krateo.io/deletion-policy: orphan}      # an adopted default
+spec:
+  configurationRef: {name: keycloak-admin, namespace: krateo-system}
+  realm: krateo
+  name: Trusted Hosts
+  subType: anonymous
+  providerId: trusted-hosts
+  providerType: org.keycloak.services.clientregistration.policy.ClientRegistrationPolicy
+  config:
+    trusted-hosts: ["127.0.0.1"]
+    host-sending-registration-request-must-match: ["false"]
+    client-uris-must-match: ["true"]
+---
+apiVersion: keycloak.ogen.krateo.io/v1
+kind: KeycloakClientRegistrationPolicy
+metadata:
+  name: krateo-anon-client-disabled
+spec:
+  configurationRef: {name: keycloak-admin, namespace: krateo-system}
+  realm: krateo
+  name: krateo client-disabled
+  subType: anonymous
+  providerId: client-disabled
+  providerType: org.keycloak.services.clientregistration.policy.ClientRegistrationPolicy
+  config: {}
+```
+
 ## Verify the admin-token path
 
 ESO mints a fresh admin bearer token from Keycloak's token endpoint into

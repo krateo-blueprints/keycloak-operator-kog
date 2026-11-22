@@ -1,0 +1,66 @@
+{{- $kogRD := include "keycloak-config-kog.restDefinitions" . | fromYaml }}
+{{- if $kogRD.clientregistrationpolicy.enabled }}
+apiVersion: ogen.krateo.io/v1alpha1
+kind: RestDefinition
+metadata:
+  name: {{ .Release.Name }}-clientregistrationpolicy
+  labels:
+    {{- include "keycloak-config-kog.labels" . | nindent 4 }}
+spec:
+  oasPath: configmap://{{ .Release.Namespace }}/{{ .Release.Name }}-clientregistrationpolicy/clientregistrationpolicy.yaml
+  resourceGroup: {{ .Values.resourceGroup }}
+  resource:
+    kind: {{ $kogRD.clientregistrationpolicy.kind }}
+    # Natural key: `name` + `subType`. The realm's DEFAULT policies share names across the anonymous and
+    # authenticated subTypes and Keycloak ignores a subType query parameter (measured on 26.6.3), so matching on name
+    # alone would find two. Naming a default adopts it; a new name creates one. The server-generated UUID {id} is
+    # resolved by the findby and excluded from spec. {realm} auto-surfaces as a spec field.
+    identifiers:
+      - name
+      - subType
+    additionalStatusFields:
+      - id
+    excludedSpecFields:
+      - id
+      - parentId
+    # The component type is a constant sent on the findby from the Configuration CR
+    # (spec.configuration.query.findby.type = org.keycloak.services.clientregistration.policy.ClientRegistrationPolicy),
+    # never a CR field, so a CR cannot list another component type.
+    configurationFields:
+      - fromOpenAPI:
+          name: type
+          in: query
+        fromRestDefinition:
+          actions:
+            - findby
+    verbsDescription:
+      - action: findby
+        method: GET
+        path: /admin/realms/{realm}/components
+        # AND, not the default OR: with OR the findby returns on the FIRST identifier that agrees (`name`) and never
+        # compares `subType`, so a CR for the authenticated "Allowed Client Scopes" would adopt the anonymous one
+        # (measured on kc-roll057: rdc logged "findby adopted an external resource on a SUBSET of the declared
+        # identifiers ... notConsulted [subType]"). AND requires name AND subType to agree.
+        identifiersMatchPolicy: AND
+      - action: create
+        method: POST
+        path: /admin/realms/{realm}/components
+      - action: get
+        method: GET
+        path: /admin/realms/{realm}/components/{id}
+        requestFieldMapping:
+          - inPath: id
+            inCustomResource: status.id
+      - action: update
+        method: PUT
+        path: /admin/realms/{realm}/components/{id}
+        requestFieldMapping:
+          - inPath: id
+            inCustomResource: status.id
+      - action: delete
+        method: DELETE
+        path: /admin/realms/{realm}/components/{id}
+        requestFieldMapping:
+          - inPath: id
+            inCustomResource: status.id
+{{- end }}
