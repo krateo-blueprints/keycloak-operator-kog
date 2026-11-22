@@ -35,6 +35,9 @@ requiredaction:
 userprofile:
   enabled: true
   kind: KeycloakUserProfile
+clientregistrationpolicy:
+  enabled: true
+  kind: KeycloakClientRegistrationPolicy
 clientprofiles:
   enabled: true
   kind: KeycloakClientProfiles
