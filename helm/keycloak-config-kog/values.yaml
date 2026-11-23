@@ -141,6 +141,11 @@ restDefinitions:
   serviceaccountrolemapping:
     enabled: true
     kind: KeycloakServiceAccountRoleMapping
+  # One client scope assigned to one client as OPTIONAL (Keycloak ignores optionalClientScopes on a client
+  # update). Delegated to Snowplow RESTActions like serviceaccountrolemapping (0.15.0).
+  clientoptionalclientscope:
+    enabled: true
+    kind: KeycloakClientOptionalClientScope
 
 # ---------------------------------------------------------------------------
 # Snowplow delegation (used by restDefinitions.authenticationexecution and serviceaccountrolemapping)

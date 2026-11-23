@@ -1,0 +1,106 @@
+openapi: 3.0.3
+info:
+  title: Keycloak Admin API - Client Optional Client Scope (KOG subset)
+  version: v1
+  description: Hand-curated OpenAPI 3.0 subset of the Keycloak Admin REST API for assigning ONE client scope to
+    ONE client as an OPTIONAL scope. Keycloak ignores optionalClientScopes on a client update (create-only,
+    measured on 26.6.3), and the assignment endpoints address the client and the scope only by server UUIDs, so
+    the RestDefinition delegates its lifecycle to Snowplow RESTActions (observeApiRef/createApiRef/
+    updateApiRef/deleteApiRef) that resolve both by clientId and scope name. Keycloak has no per-assignment GET
+    (the single URL answers 404 whether assigned or not, measured), so no get verb is declared - existence is the
+    observe RESTAction's membership test (notFoundExpr). This OAS exists to generate the CRD spec shape from
+    the create request body. The status fields are typed by the RestDefinition's observeApiRef.statusSchema. Declares the http/bearer security
+    scheme that the upstream Keycloak OAS omits.
+    NOTE - this asset is hand-maintained (not emitted by hack/gen_oas_assets.py).
+servers:
+- url: '{{ .Values.keycloak.baseUrl }}'
+  description: Keycloak base URL (no trailing slash).
+security:
+- bearer: []
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      description: Keycloak admin access token (OAuth2 Bearer).
+  schemas:
+    ClientOptionalClientScopeInput:
+      type: object
+      description: One client scope (clientScope, by name) assigned to one client (clientId) as an OPTIONAL
+        scope, so the client may request it (`scope=<name>`) and receives its mappers when it does. The CR owns
+        that ONE assignment; the client's other optional scopes are never touched. The natural key is (realm,
+        clientId, clientScope); those fields are effectively CREATE-ONLY - changing them re-targets the
+        reconcile and leaves the old assignment in place. A scope assigned to the client as a DEFAULT scope is
+        not moved (Keycloak keeps it default), and the CR then stays unready. Until the client and the scope both
+        exist the CR stays unready and retries.
+      required:
+      - clientId
+      - clientScope
+      properties:
+        clientId:
+          type: string
+          minLength: 1
+          description: clientId (not the UUID) of the client, e.g. krateo-ide.
+        clientScope:
+          type: string
+          minLength: 1
+          description: Name (not the id) of the client scope, e.g. mcp.
+paths:
+  /admin/realms/{realm}/clients/{clientUuid}/optional-client-scopes/{clientScopeId}:
+    put:
+      operationId: createClientoptionalclientscope
+      summary: Assign the client scope to the client as optional (the RESTActions send no body; this body only
+        shapes the CRD)
+      tags:
+      - clientoptionalclientscope
+      parameters:
+      - name: realm
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: clientUuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Client id (resolved by the RESTActions, never part of the spec).
+      - name: clientScopeId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Client scope id (resolved by the RESTActions, never part of the spec).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientOptionalClientScopeInput'
+      responses:
+        '204':
+          description: Assigned (also when already assigned).
+    delete:
+      operationId: deleteClientoptionalclientscope
+      summary: Unassign (204 also when not assigned, measured)
+      tags:
+      - clientoptionalclientscope
+      parameters:
+      - name: realm
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: clientUuid
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: clientScopeId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: Unassigned.

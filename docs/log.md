@@ -11,6 +11,38 @@ timestamp: 2026-08-11T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-24 — KeycloakClientOptionalClientScope, missing policy keys are drift, realm offline sessions (0.15.0)
+
+**Needs oasgen-provider (and its CRDs) >= 0.91.1.** An older RestDefinition CRD prunes `statusSchema` and
+`requirePresentFields` silently, and before 0.89.0 rejects the new kind.
+
+**What.**
+- `KeycloakClientOptionalClientScope`: one client scope assigned to one client as optional, by their names. Keycloak ignores
+  `optionalClientScopes` on a client update, and a requested scope the client does not hold is a hard `invalid_scope`.
+  Delegated to RESTActions. Its observe raises on any failure that is not a 404, so "unknown" never reads as "absent"; its
+  delete re-reads the client's scopes and raises while the scope is still there. Both are needed: snowplow answers 200 when
+  a stage failed and rest-dynamic-controller only warns, and Keycloak's DELETE answers 204 whether or not it removed
+  anything. No `get`: Keycloak has none for an assignment, and a list `get` would hold the finalizer forever.
+- `KeycloakClientRegistrationPolicy`: every `config` key is `requirePresentFields`. Keycloak's defaults omit keys, and a
+  declared key missing from Keycloak's object was ignored, so an adopted policy read Ready while its restriction was never
+  sent. **An upgrade sends such keys**: check the policies you adopted. An empty list clears a key (the only way to: the
+  component PUT keeps a key left out of it). Limit: a policy whose whole `config` ends up empty keeps being re-sent
+  (oasgen-provider #912).
+- `KeycloakRealm`: `offlineSessionIdleTimeout`, `offlineSessionMaxLifespanEnabled`, `offlineSessionMaxLifespan`.
+
+**Validated live on kc-roll057** (oasgen 0.91.1, Keycloak 26.6.3, throwaway realms, test variants removed):
+- assign → Ready with typed status; quiet over 400 s; a hand unassign re-assigned (129 s); the client's other scopes
+  unchanged throughout;
+- observe broken with a non-404 → `ObserveFailed`, not re-created; a DELETE without effect, and a refused lookup → finalizer
+  held (11 and 12 refused retries), then released once restored; realm deleted first → released;
+- a declared key Keycloak lacked was sent, then quiet; the 0.14.0 kind beside it stayed Ready without it (control); `[]`
+  cleared it in one update and settled, and drift on the neighbouring key was still corrected afterwards; a single-key
+  policy set to `[]` kept being re-sent (#912).
+
+**Corrected while building it.** `continueOnError` on a mutation stage was never needed for Keycloak's empty 204s (snowplow
+>= 1.12.48 accepts them); removing it does not make a delete failure propagate either. A first draft refused empty lists at
+admission: wrong, 5 of the 8 keys are legitimately empty.
+
 ## 2026-11-22 — KeycloakClientScopeProtocolMapper and an optional KeycloakClientScope id (0.14.0)
 
 **Why.** Anonymously registered agent clients get their audience, groups and username claims from a shared client scope

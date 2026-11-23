@@ -1,0 +1,191 @@
+{{- $kogRD := include "keycloak-config-kog.restDefinitions" . | fromYaml }}
+{{- if $kogRD.clientoptionalclientscope.enabled }}
+{{- /*
+Snowplow RESTActions backing the KeycloakClientOptionalClientScope RestDefinition (observeApiRef /
+createApiRef + updateApiRef / deleteApiRef - see rd-clientoptionalclientscope.yaml).
+
+ONE client scope assigned to ONE client as an OPTIONAL scope. Keycloak ignores optionalClientScopes on a
+client update (create-only, measured on 26.6.3), so a scope can be added to an EXISTING client only through
+PUT/DELETE /clients/{clientUuid}/optional-client-scopes/{clientScopeId} - both idempotent (204 on repeat,
+measured) and both addressed by server UUIDs, which these RESTActions resolve from clientId and the scope's name.
+The CR owns that ONE assignment: the client's other optional scopes (offline_access, address, ...) are never read
+for convergence nor touched.
+
+Request context (extras): the identifiers realm, clientId, clientScope, and the whole `spec`.
+
+Resolution chain (linear, each stage dependsOn the previous one):
+  client   GET /clients?clientId=<clientId>                 -> the client (exact clientId match in jq)
+  scope    GET /client-scopes                               -> the scope (exact name match in jq)
+  assigned GET /clients/<client.id>/optional-client-scopes  -> the client's optional scopes ([{id,name}])
+FAILURE RULE. snowplow answers 200 even when a stage failed, and rest-dynamic-controller only WARNS about failed
+stages, so a stage failure alone never fails an observe or a delete. A FILTER that raises does: the resolve errors,
+the controller reports the observe as failed (never as "absent") and holds the finalizer on a delete. So the observe
+and delete stages record their failures (continueOnError + errorKey) and the filters raise on any failure that is not
+a 404 - only a 404 (the realm or the client is gone) means "absent". The delete also RE-READS the client's optional
+scopes and raises while the scope is still assigned: Keycloak's DELETE answers 204 whether or not it removed anything
+(measured), and for an observeApiRef kind the controller cannot verify a delete itself yet (oasgen-provider #885).
+Create and update are level-based: they are re-invoked until the observe sees the assignment.
+*/}}
+apiVersion: templates.krateo.io/v1
+kind: RESTAction
+metadata:
+  name: {{ .Release.Name }}-clientoptionalclientscope-observe
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "keycloak-config-kog.labels" . | nindent 4 }}
+spec:
+  api:
+    # Every observe stage tolerates failure: a client or scope that does not exist yet must compose
+    # {found:false}, not fail the observe.
+    - name: client
+      endpointRef:
+        name: {{ .Values.snowplow.endpointSecretName }}
+        namespace: {{ .Release.Namespace }}
+      path: '${ "/admin/realms/" + .realm + "/clients?clientId=" + (.clientId|@uri) }'
+      continueOnError: true
+      errorKey: clientError
+    - name: scope
+      dependsOn:
+        name: client
+        iterator: '[{realm: .realm}]'
+      endpointRef:
+        name: {{ .Values.snowplow.endpointSecretName }}
+        namespace: {{ .Release.Namespace }}
+      path: '${ "/admin/realms/" + .realm + "/client-scopes" }'
+      continueOnError: true
+      errorKey: scopeError
+    - name: assigned
+      dependsOn:
+        name: scope
+        iterator: >-
+          .clientId as $cid
+          | ((([.client // [] | arrays | .[] | select(.clientId == $cid)])[0]) // null) as $c
+          | if $c == null then [] else [{realm: .realm, id: $c.id}] end
+      endpointRef:
+        name: {{ .Values.snowplow.endpointSecretName }}
+        namespace: {{ .Release.Namespace }}
+      path: '${ "/admin/realms/" + .realm + "/clients/" + .id + "/optional-client-scopes" }'
+      continueOnError: true
+      errorKey: assignedError
+  filter: |-
+    def hard($e): ([($e // []) | .[] | select((type != "object") or (.code != 404))] | length) > 0;
+    if hard(.clientError) or hard(.scopeError) or hard(.assignedError)
+    then error("Keycloak lookup failed: the assignment's existence is unknown") else . end
+    | .clientId as $cid
+    | .clientScope as $sn
+    | ((([.client // [] | arrays | .[] | select(.clientId == $cid)])[0]) // null) as $c
+    | ((([.scope // [] | arrays | .[] | select(.name == $sn)])[0]) // null) as $s
+    | if ($c == null) or ($s == null) or ((.assigned | type) != "array")
+      then {found: false}
+      else {found: ([.assigned[] | .id] | any(. == $s.id)),
+            clientUuid: $c.id,
+            clientScopeId: $s.id}
+      end
+---
+apiVersion: templates.krateo.io/v1
+kind: RESTAction
+metadata:
+  name: {{ .Release.Name }}-clientoptionalclientscope-apply
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "keycloak-config-kog.labels" . | nindent 4 }}
+spec:
+  api:
+    # The resolution stages carry NO continueOnError, so a hard failure truncates the chain before the
+    # mutation (retried on the next reconcile). A client or scope that does not exist yet resolves to an
+    # empty iterator and the invocation is a no-op; the observe keeps reporting not-found.
+    - name: client
+      endpointRef:
+        name: {{ .Values.snowplow.endpointSecretName }}
+        namespace: {{ .Release.Namespace }}
+      path: '${ "/admin/realms/" + .realm + "/clients?clientId=" + (.clientId|@uri) }'
+    - name: scope
+      dependsOn:
+        name: client
+        iterator: '[{realm: .realm}]'
+      endpointRef:
+        name: {{ .Values.snowplow.endpointSecretName }}
+        namespace: {{ .Release.Namespace }}
+      path: '${ "/admin/realms/" + .realm + "/client-scopes" }'
+    - name: assign
+      dependsOn:
+        name: scope
+        iterator: >-
+          .clientId as $cid
+          | .clientScope as $sn
+          | ((([.client // [] | arrays | .[] | select(.clientId == $cid)])[0]) // null) as $c
+          | ((([.scope // [] | arrays | .[] | select(.name == $sn)])[0]) // null) as $s
+          | if ($c == null) or ($s == null) then [] else [{realm: .realm, cu: $c.id, sid: $s.id}] end
+      endpointRef:
+        name: {{ .Values.snowplow.endpointSecretName }}
+        namespace: {{ .Release.Namespace }}
+      verb: PUT
+      path: '${ "/admin/realms/" + .realm + "/clients/" + .cu + "/optional-client-scopes/" + .sid }'
+  filter: '{}'
+---
+apiVersion: templates.krateo.io/v1
+kind: RESTAction
+metadata:
+  name: {{ .Release.Name }}-clientoptionalclientscope-delete
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "keycloak-config-kog.labels" . | nindent 4 }}
+spec:
+  api:
+    # Unassign. An already-gone client or scope resolves to nothing and the delete is a no-op (the
+    # assignment cannot outlive either).
+    - name: client
+      endpointRef:
+        name: {{ .Values.snowplow.endpointSecretName }}
+        namespace: {{ .Release.Namespace }}
+      path: '${ "/admin/realms/" + .realm + "/clients?clientId=" + (.clientId|@uri) }'
+      continueOnError: true
+      errorKey: clientError
+    - name: scope
+      dependsOn:
+        name: client
+        iterator: '[{realm: .realm}]'
+      endpointRef:
+        name: {{ .Values.snowplow.endpointSecretName }}
+        namespace: {{ .Release.Namespace }}
+      path: '${ "/admin/realms/" + .realm + "/client-scopes" }'
+      continueOnError: true
+      errorKey: scopeError
+    - name: unassign
+      dependsOn:
+        name: scope
+        iterator: >-
+          .clientId as $cid
+          | .clientScope as $sn
+          | ((([.client // [] | arrays | .[] | select(.clientId == $cid)])[0]) // null) as $c
+          | ((([.scope // [] | arrays | .[] | select(.name == $sn)])[0]) // null) as $s
+          | if ($c == null) or ($s == null) then [] else [{realm: .realm, cu: $c.id, sid: $s.id}] end
+      endpointRef:
+        name: {{ .Values.snowplow.endpointSecretName }}
+        namespace: {{ .Release.Namespace }}
+      verb: DELETE
+      path: '${ "/admin/realms/" + .realm + "/clients/" + .cu + "/optional-client-scopes/" + .sid }'
+      continueOnError: true
+      errorKey: unassignError
+    - name: verify
+      dependsOn:
+        name: unassign
+        iterator: >-
+          .clientId as $cid
+          | ((([.client // [] | arrays | .[] | select(.clientId == $cid)])[0]) // null) as $c
+          | if $c == null then [] else [{realm: .realm, id: $c.id}] end
+      endpointRef:
+        name: {{ .Values.snowplow.endpointSecretName }}
+        namespace: {{ .Release.Namespace }}
+      path: '${ "/admin/realms/" + .realm + "/clients/" + .id + "/optional-client-scopes" }'
+      continueOnError: true
+      errorKey: verifyError
+  filter: |-
+    def hard($e): ([($e // []) | .[] | select((type != "object") or (.code != 404))] | length) > 0;
+    .clientScope as $sn
+    | if hard(.clientError) or hard(.scopeError) or hard(.unassignError) or hard(.verifyError)
+      then error("Keycloak call failed: the unassignment is not confirmed")
+      elif ([.verify // [] | arrays | .[] | .name] | any(. == $sn))
+      then error("the client scope is still assigned to the client")
+      else {} end
+{{- end }}

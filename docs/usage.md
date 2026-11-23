@@ -396,6 +396,15 @@ spec:
 ```
 
 
+
+**A declared key Keycloak lacks is drift (0.15.0).** Keycloak's default policies omit keys (Allowed Client Scopes has no
+`allowed-client-scopes`), and before 0.15.0 a declared key missing from Keycloak's object was ignored: the policy read Ready
+while its restriction was never sent. Every `config` key is now required to be present. **An empty list clears a key**: it
+is the only way to clear one (Keycloak keeps the value of a key left out of the update), and Keycloak stores it as absent,
+which then agrees with the declared `[]`. One limit: when that leaves the policy's whole `config` empty (a single-key
+policy such as Allowed Registration Web Origins set to `[]`), the controller keeps re-sending it (oasgen-provider #912).
+Keep one other key, or remove the CR.
+
 ## Client scope mappers and fixed scope ids (0.14.0)
 
 Keycloak **ignores `protocolMappers` on a client-scope update** (measured on 26.6.3: a `PUT /client-scopes/{id}` with a
@@ -435,6 +444,34 @@ spec:
     access.token.claim: "true"
     id.token.claim: "false"
 ```
+
+
+## Optional client scopes on an existing client (0.15.0)
+
+Keycloak ignores `optionalClientScopes` on a client update (create-only, measured on 26.6.3), and answers a requested
+scope the client does not hold with a hard `invalid_scope`. `KeycloakClientOptionalClientScope` assigns **one** scope to
+**one** client, by their names, through Keycloak's dedicated endpoint, so it works on a client that already exists. It owns
+that one assignment: the client's other optional scopes (`offline_access`, ...) are never touched.
+
+```yaml
+apiVersion: keycloak.ogen.krateo.io/v1
+kind: KeycloakClientOptionalClientScope
+metadata:
+  name: krateo-ide-mcp
+spec:
+  configurationRef:
+    name: keycloak-admin
+    namespace: krateo-system
+  realm: krateo
+  clientId: krateo-ide
+  clientScope: mcp
+```
+
+Until the client and the scope both exist the CR stays unready and retries. A scope the client already holds as a
+**default** scope is not moved, and the CR stays unready. Deleting the CR unassigns the scope, and the finalizer is held
+until Keycloak no longer lists it: the delete re-reads the list, and only a 404 (the realm or the client is gone) counts as
+done. A lookup that fails in any other way never reads as "absent". Delegated to Snowplow RESTActions, so it needs what
+`KeycloakServiceAccountRoleMapping` needs.
 
 ## Verify the admin-token path
 

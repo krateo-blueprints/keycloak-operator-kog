@@ -33,6 +33,8 @@ components:
   schemas:
     StringList:
       type: array
+      description: An empty list CLEARS the key (Keycloak stores it as absent); omitting the key leaves Keycloak's
+        value as it is (measured on 26.6.3).
       items:
         type: string
     PolicyConfig:

@@ -10,7 +10,7 @@ description: >-
 type: application
 version: CHART_VERSION
 appVersion: "26.0"
-home: https://www.keycloak.org/
+home: https://github.com/krateo-blueprints/krateo-keycloak-operator-kog
 icon: https://raw.githubusercontent.com/krateo-platformops/.github/main/brand/logo.svg
 keywords:
   - security
@@ -38,8 +38,17 @@ annotations:
   # findby-addressed kind (most of this chart's) a create whose outcome cannot be determined stays
   # Creating instead of reaching CreateOutcomeUnknown, so a parent reads healthy over a resource that will
   # never exist. Fixed by #759 in 0.78.0. Measured here on 0.78.0 and 0.80.0 (kc-roll057, 2026-11-17).
-  krateo.io/requires-oasgen-provider: ">= 0.78.0"
-  krateo.io/requires-oasgen-provider-crd: ">= 0.78.0"
+  # 0.91.1 (KOG 0.15.0), not 0.91.0 (published without its CRD chart): statusSchema on observeApiRef (#889) types the
+  # composed status of KeycloakClientOptionalClientScope, and requirePresentFields (#886) makes a config key missing
+  # from a KeycloakClientRegistrationPolicy drift; an older CRD PRUNES both silently. 0.89.0 already admits the shape:
+  # KeycloakClientOptionalClientScope declares createApiRef + observeApiRef.notFoundExpr and
+  # NO get/findby (Keycloak has no per-assignment GET, and a list get would hold the delete finalizer forever).
+  # The RestDefinition CRD before 0.89.0 REJECTS that at admission ("createApiRef requires a get or findby verb");
+  # 0.89.0 (#887) accepts notFoundExpr as the convergence check. The CRD is the hard floor; the provider moves
+  # with it as one version line, and >= 0.84.0 is also what stops a fresh realm install's groups/clients latching
+  # CreateOutcomeUnknown on a 404 "Realm not found" (measured on 0.80.0 vs 0.88.0, kc-roll057, 2026-11-22).
+  krateo.io/requires-oasgen-provider: ">= 0.91.1"
+  krateo.io/requires-oasgen-provider-crd: ">= 0.91.1"
 # Helm's `sources` is the source code of THIS chart, and release tooling resolves the chart version
 # as a tag in each listed repo. The Keycloak OpenAPI document (an input, vendored under assets/) and
 # oasgen-provider (the generator that reads it) are not this chart's source: listing oasgen-provider

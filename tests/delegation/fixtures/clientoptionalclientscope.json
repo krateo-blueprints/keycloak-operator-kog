@@ -1,0 +1,19 @@
+{
+  "client": [
+    {"id": "c-ide", "clientId": "krateo-ide"},
+    {"id": "c-ide2", "clientId": "krateo-ide-old"}
+  ],
+  "scope": [
+    {"id": "s-mcp", "name": "mcp", "protocol": "openid-connect"},
+    {"id": "s-mcpx", "name": "mcp-extra", "protocol": "openid-connect"},
+    {"id": "s-off", "name": "offline_access", "protocol": "openid-connect"}
+  ],
+  "assigned_with_mcp": [
+    {"id": "s-off", "name": "offline_access"},
+    {"id": "s-mcp", "name": "mcp"}
+  ],
+  "assigned_without_mcp": [
+    {"id": "s-off", "name": "offline_access"},
+    {"id": "s-mcpx", "name": "mcp-extra"}
+  ]
+}
