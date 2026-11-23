@@ -21,6 +21,7 @@ they must refuse, so a check that has silently stopped refusing anything fails h
 Usage: validate-chart.py <chart-dir> <rendered-manifests.yaml> <repo-root>
 """
 import os
+import re
 import sys
 
 import yaml
@@ -186,7 +187,25 @@ def check_status_fields(docs):
         verbs = {v["action"]: v for v in res.get("verbsDescription") or []}
         verb = verbs.get("get") or verbs.get("findby")
         if not verb:
-            errors.append(f"{name}: no get or findby verb, so status fields could not be checked")
+            # Observed through a RESTAction and nothing else (no get/findby): the generator types the status from
+            # observeApiRef.statusSchema, and the RESTAction's filter composes it. Both must name the field, or it
+            # is typed string (the status write is then refused) or stays empty.
+            ref = res.get("observeApiRef") or {}
+            types = ref.get("statusSchema")
+            if not types:
+                errors.append(f"{name}: no get or findby verb and no observeApiRef.statusSchema, so status fields could not be checked")
+                continue
+            ra = next((x for x in docs if x.get("kind") == "RESTAction" and x["metadata"]["name"] == ref.get("name")), None)
+            if ra is None:
+                errors.append(f"{name}: observeApiRef {ref.get('name')!r} is not a rendered RESTAction")
+                continue
+            composed = ra["spec"].get("filter") or ""
+            for field in fields:
+                checked += 1
+                if field not in types:
+                    errors.append(f"{name}: additionalStatusFields {field!r} is not in observeApiRef.statusSchema, so it would be typed string")
+                elif not re.search(r"\b" + re.escape(field) + r"\s*:", composed):
+                    errors.append(f"{name}: additionalStatusFields {field!r} is not composed by the RESTAction {ref['name']}, so it would silently stay empty")
             continue
         schema, err = response_schema(oas, verb["method"], verb["path"])
         if err:
@@ -229,6 +248,30 @@ def selftest_status_fields():
     else:
         # Printed so a pass is distinguishable from an arm that never ran.
         print(f"self-test: status-field check accepted a present field and refused an absent one ({e[0][:90]}...)")
+
+    # A kind observed only through a RESTAction: statusSchema AND the filter must name the field.
+    def delegated(fields, types, composed="{found: true}", ra="obs"):
+        return [
+            {"kind": "ConfigMap", "metadata": {"name": "cm", "namespace": "ns"}, "data": {"x.yaml": yaml.safe_dump(oas)}},
+            {"kind": "RESTAction", "metadata": {"name": "obs"}, "spec": {"filter": composed}},
+            {"kind": "RestDefinition", "metadata": {"name": "st"},
+             "spec": {"oasPath": "configmap://ns/cm/x.yaml",
+                      "resource": {"additionalStatusFields": fields, "verbsDescription": [{"action": "create", "method": "PUT", "path": "/x/{id}"}],
+                                   "observeApiRef": {"name": ra, **({"statusSchema": types} if types else {})}}}},
+        ]
+    e, n = check_status_fields(delegated(["found"], {"found": "boolean"}))
+    if e or n != 1:
+        errors.append(f"self-test: a delegated field typed and composed was not accepted (errors={e}, checked={n})")
+    refused = 0
+    for what, d in (("no statusSchema", delegated(["found"], None)), ("not in statusSchema", delegated(["found"], {"id": "string"})),
+                    ("not composed by the filter", delegated(["found"], {"found": "boolean"}, "{notfound: 1}")),
+                    ("no such RESTAction", delegated(["found"], {"found": "boolean"}, ra="other"))):
+        e, _ = check_status_fields(d)
+        if e:
+            refused += 1
+        else:
+            errors.append(f"self-test: the delegated status-field check ACCEPTS {what}")
+    print(f"self-test: delegated status-field check accepted a typed and composed field and refused {refused}/4 broken shapes")
     return errors
 
 

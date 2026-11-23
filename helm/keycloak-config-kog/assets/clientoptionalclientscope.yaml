@@ -8,8 +8,8 @@ info:
     the RestDefinition delegates its lifecycle to Snowplow RESTActions (observeApiRef/createApiRef/
     updateApiRef/deleteApiRef) that resolve both by clientId and scope name. Keycloak has no per-assignment GET
     (the single URL answers 404 whether assigned or not, measured), so no get verb is declared - existence is the
-    observe RESTAction's membership test (notFoundExpr). This OAS exists to (a) generate the CRD spec shape from
-    the create request body and (b) type the observe-composed status fields. Declares the http/bearer security
+    observe RESTAction's membership test (notFoundExpr). This OAS exists to generate the CRD spec shape from
+    the create request body. The status fields are typed by the RestDefinition's observeApiRef.statusSchema. Declares the http/bearer security
     scheme that the upstream Keycloak OAS omits.
     NOTE - this asset is hand-maintained (not emitted by hack/gen_oas_assets.py).
 servers:
@@ -45,21 +45,6 @@ components:
           type: string
           minLength: 1
           description: Name (not the id) of the client scope, e.g. mcp.
-    ClientOptionalClientScopeStatus:
-      type: object
-      description: Typing for the generated CRD's STATUS, composed by the observe RESTAction rather than returned
-        by Keycloak.
-      properties:
-        found:
-          type: boolean
-          description: Synthetic - whether the client and the scope exist and the scope is one of the client's
-            optional scopes.
-        clientUuid:
-          type: string
-          description: Synthetic - id of the client.
-        clientScopeId:
-          type: string
-          description: Synthetic - id of the client scope.
 paths:
   /admin/realms/{realm}/clients/{clientUuid}/optional-client-scopes/{clientScopeId}:
     put:
@@ -119,27 +104,3 @@ paths:
       responses:
         '204':
           description: Unassigned.
-  /admin/realms/{realm}/clients/{clientUuid}/optional-client-scopes:
-    get:
-      operationId: listClientoptionalclientscopes
-      summary: The client's optional scopes (read by the observe RESTAction; types the composed status)
-      tags:
-      - clientoptionalclientscope
-      parameters:
-      - name: realm
-        in: path
-        required: true
-        schema:
-          type: string
-      - name: clientUuid
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ClientOptionalClientScopeStatus'
