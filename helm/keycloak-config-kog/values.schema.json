@@ -471,7 +471,7 @@
             "enabled": {
               "type": "boolean",
               "title": "Enabled",
-              "description": "Emit the KeycloakServiceAccountRoleMapping RestDefinition plus its backing RESTActions.",
+              "description": "Emit the KeycloakClientOptionalClientScope RestDefinition plus its backing RESTActions.",
               "default": true
             },
             "kind": {
@@ -479,6 +479,25 @@
               "title": "Kind",
               "description": "Kubernetes kind for the generated CRD.",
               "default": "KeycloakClientOptionalClientScope"
+            }
+          }
+        },
+        "defaultclientregistrationpolicy": {
+          "type": "object",
+          "title": "Default client registration policy",
+          "description": "KeycloakDefaultClientRegistrationPolicy RestDefinition: one of the realm's default client-registration policies, adopted and updated, never created or deleted.",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "title": "Enabled",
+              "description": "Emit the KeycloakDefaultClientRegistrationPolicy RestDefinition.",
+              "default": true
+            },
+            "kind": {
+              "type": "string",
+              "title": "Kind",
+              "description": "Kubernetes kind for the generated CRD.",
+              "default": "KeycloakDefaultClientRegistrationPolicy"
             }
           }
         }

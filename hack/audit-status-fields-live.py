@@ -184,7 +184,7 @@ def live():
     fixtures = {"KeycloakRealm", "KeycloakClient", "KeycloakClientScope", "KeycloakGroup", "KeycloakUser",
                 "KeycloakIdentityProvider", "KeycloakIdentityProviderMapper", "KeycloakProtocolMapper",
                 "KeycloakAuthenticationFlow", "KeycloakUserProfile", "KeycloakClientRegistrationPolicy",
-                "KeycloakClientScopeProtocolMapper"}
+                "KeycloakClientScopeProtocolMapper", "KeycloakDefaultClientRegistrationPolicy"}
     # Reconciled BEFORE creating anything: a new or renamed kind is reported, not a mid-run crash.
     missing = audited - fixtures
     R = f"/admin/realms/{REALM}"
@@ -231,6 +231,12 @@ def live():
             "name": "audit-crp", "providerId": "client-disabled", "subType": "anonymous", "config": {},
             "providerType": "org.keycloak.services.clientregistration.policy.ClientRegistrationPolicy"})
         params["KeycloakClientRegistrationPolicy"] = dict(p, id=created(st, loc, "client registration policy"))
+        # A DEFAULT policy: Keycloak made it with the realm; the kind never creates one.
+        st, body, _ = raw("GET", f"{R}/components?type=org.keycloak.services.clientregistration.policy.ClientRegistrationPolicy")
+        found = [c["id"] for c in (body or []) if c.get("subType") == "anonymous" and c.get("name") == "Trusted Hosts"]
+        if len(found) != 1:
+            raise RuntimeError(f"default policy 'Trusted Hosts': HTTP {st}, {len(found)} found")
+        params["KeycloakDefaultClientRegistrationPolicy"] = dict(p, id=found[0])
 
         def call(method, path):
             st, body, _ = raw(method, path)

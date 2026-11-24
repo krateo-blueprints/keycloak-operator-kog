@@ -1,0 +1,73 @@
+{{- $kogRD := include "keycloak-config-kog.restDefinitions" . | fromYaml }}
+{{- if $kogRD.defaultclientregistrationpolicy.enabled }}
+apiVersion: ogen.krateo.io/v1alpha1
+kind: RestDefinition
+metadata:
+  name: {{ .Release.Name }}-defaultclientregistrationpolicy
+  labels:
+    {{- include "keycloak-config-kog.labels" . | nindent 4 }}
+spec:
+  oasPath: configmap://{{ .Release.Namespace }}/{{ .Release.Name }}-defaultclientregistrationpolicy/defaultclientregistrationpolicy.yaml
+  resourceGroup: {{ .Values.resourceGroup }}
+  resource:
+    kind: {{ $kogRD.defaultclientregistrationpolicy.kind }}
+    # One of the realm's DEFAULT client-registration policies, ADOPTED and updated, never created and never deleted.
+    # Keycloak creates its defaults together with the realm, so creating one is never right: on a fresh install a create
+    # refused while the realm did not exist yet was retried a second later without looking again, and made a second
+    # "Trusted Hosts" next to the default (measured on kc-roll057 with oasgen 0.91.1, oasgen-provider #919). With no
+    # create verb the wrong thing cannot happen; deleting the CR leaves the policy as it is.
+    # Natural key: `name` + `subType`. The defaults share names across the anonymous and authenticated subTypes and
+    # Keycloak ignores a subType query parameter (measured on 26.6.3).
+    identifiers:
+      - name
+      - subType
+    additionalStatusFields:
+      - id
+    excludedSpecFields:
+      - id
+      - parentId
+    # A declared config key MISSING from Keycloak's object is drift (oasgen-provider #886; the default ignores it).
+    # Keycloak's default policies omit keys (Allowed Client Scopes has no allowed-client-scopes), so without this an
+    # adopted policy read Ready while its restriction was never sent (measured on kc-roll057, 0.80.0-0.88.0). Keycloak
+    # echoes every non-empty key it is given and stores an EMPTY list as absent (measured on 26.6.3).
+    requirePresentFields:
+      - config.trusted-hosts
+      - config.host-sending-registration-request-must-match
+      - config.client-uris-must-match
+      - config.allowed-client-scopes
+      - config.allow-default-scopes
+      - config.allowed-protocol-mapper-types
+      - config.max-clients
+      - config.web-origins
+    # The component type is a constant sent on the findby from the Configuration CR
+    # (spec.configuration.query.findby.type = org.keycloak.services.clientregistration.policy.ClientRegistrationPolicy),
+    # never a CR field, so a CR cannot list another component type.
+    configurationFields:
+      - fromOpenAPI:
+          name: type
+          in: query
+        fromRestDefinition:
+          actions:
+            - findby
+    verbsDescription:
+      - action: findby
+        method: GET
+        path: /admin/realms/{realm}/components
+        # AND, not the default OR: with OR the findby returns on the FIRST identifier that agrees (`name`) and never
+        # compares `subType`, so a CR for the authenticated "Allowed Client Scopes" would adopt the anonymous one
+        # (measured on kc-roll057: rdc logged "findby adopted an external resource on a SUBSET of the declared
+        # identifiers ... notConsulted [subType]"). AND requires name AND subType to agree.
+        identifiersMatchPolicy: AND
+      - action: get
+        method: GET
+        path: /admin/realms/{realm}/components/{id}
+        requestFieldMapping:
+          - inPath: id
+            inCustomResource: status.id
+      - action: update
+        method: PUT
+        path: /admin/realms/{realm}/components/{id}
+        requestFieldMapping:
+          - inPath: id
+            inCustomResource: status.id
+{{- end }}

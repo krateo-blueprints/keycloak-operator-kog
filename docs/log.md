@@ -11,6 +11,24 @@ timestamp: 2026-08-11T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-24 — KeycloakDefaultClientRegistrationPolicy, adopt-only (0.16.0)
+
+**Why.** On a fresh install the registration-policy CRs race the realm they belong to. Keycloak refuses the create while the
+realm does not exist (404); a second later the realm exists **with its own default policies**, and rest-dynamic-controller
+retries the create without looking again (oasgen-provider #919). Keycloak does not refuse a second policy of the same name, so
+the realm ended with two "Trusted Hosts", two "Allowed Client Scopes" and two "Max Clients Limit", and the CRs matched two
+and could not converge. It failed closed (anonymous registration refused). Two earlier fresh installs had converged by luck.
+
+**What.** `KeycloakDefaultClientRegistrationPolicy`: findby, get and update, **no create and no delete**. It waits until the
+realm has the policy (Ready False `NoCreateVerbDeclared` until then, recovering by itself), keeps it as declared, and leaves
+it as it is when the CR is deleted, whatever the deletion policy says. Same spec as `KeycloakClientRegistrationPolicy`, which
+stays for policies the realm does not have. The `clientoptionalclientscope` schema description names its own kind.
+
+**Validated live on kc-roll057** (oasgen 0.91.1, Keycloak 26.6.3): the race provoked on purpose, 3 CRs applied before each of
+16 realms was created at once. New kind: 24/24 Ready, 3 policies in each of 8 realms. Control, the existing kind: 0/24 Ready,
+6 policies in each of 8 realms. Then 48 observes without an update over 420 s, a hand change reverted in 19 s, and a CR
+deleted with `deletion-policy: delete` left its policy in place.
+
 ## 2026-11-24 — KeycloakClientOptionalClientScope, missing policy keys are drift, realm offline sessions (0.15.0)
 
 **Needs oasgen-provider (and its CRDs) >= 0.91.1.** An older RestDefinition CRD prunes `statusSchema` and
