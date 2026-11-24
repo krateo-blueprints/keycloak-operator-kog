@@ -112,6 +112,10 @@ restDefinitions:
   clientregistrationpolicy:
     enabled: true
     kind: KeycloakClientRegistrationPolicy
+  # One of the realm's DEFAULT registration policies: adopted and updated, never created or deleted (0.16.0).
+  defaultclientregistrationpolicy:
+    enabled: true
+    kind: KeycloakDefaultClientRegistrationPolicy
   # A realm's client-policies PROFILES and POLICIES (Keycloak >= 15): profiles bundle executors (pkce-enforcer,
   # secure-redirect-uris-enforcer, ...), policies apply profiles to the clients their conditions match (e.g.
   # client-updater-context ByAnonymous = anonymously registered clients). One document each per realm that always

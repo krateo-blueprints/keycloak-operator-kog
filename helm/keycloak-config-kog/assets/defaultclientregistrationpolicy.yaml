@@ -1,0 +1,180 @@
+openapi: 3.0.3
+info:
+  title: Keycloak Admin API - Client Registration Policies (KOG subset)
+  version: v1
+  description: |
+    Hand-curated OpenAPI 3.0 subset of the Keycloak Admin REST API for a realm's CLIENT REGISTRATION POLICIES:
+    the components (providerType org.keycloak.services.clientregistration.policy.ClientRegistrationPolicy) that constrain dynamic client registration, anonymous or authenticated.
+
+    A new realm already HAS a default set (measured on Keycloak 26.6.3: Trusted Hosts, Consent Required, Full Scope
+    Disabled, Max Clients Limit, Allowed Client Scopes, Allowed Protocol Mapper Types, Allowed Registration Web
+    Origins for `anonymous`; the last three again for `authenticated`). So a CR naming a default ADOPTS it: the findby
+    lists the realm's components of this type by `name` and matches on `name` AND `subType`, because the same name
+    exists for both subTypes and Keycloak ignores a subType query parameter (measured). A CR with a new name creates
+    one (POST; Keycloak attaches it to the realm, measured, so no parentId is sent). Update is a PUT of the spec
+    fields, which Keycloak accepts without id or parentId and keeps under the realm (measured).
+
+    `providerType` is constant, sent on the findby as the `type` query parameter from the Configuration CR
+    (spec.configuration.query.findby.type) and in the body as an enum of one value. Config values are always arrays of
+    strings in Keycloak (a boolean is ["true"], a number ["200"]) and round-trip exactly (measured), so each key is
+    typed as an array of strings; the keys are the configProperties of the modelled providers (serverinfo).
+    Declares the http/bearer security scheme that the upstream Keycloak OAS omits.
+servers:
+- url: '{{ .Values.keycloak.baseUrl }}'
+  description: Keycloak base URL (no trailing slash).
+security:
+- bearer: []
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      description: Keycloak admin access token (OAuth2 Bearer).
+  schemas:
+    StringList:
+      type: array
+      description: An empty list CLEARS the key (Keycloak stores it as absent); omitting the key leaves Keycloak's
+        value as it is (measured on 26.6.3).
+      items:
+        type: string
+    PolicyConfig:
+      type: object
+      description: Provider configuration; only the keys of the provider named in providerId apply. Every value is a list of strings.
+      properties:
+        trusted-hosts:
+          $ref: '#/components/schemas/StringList'
+        host-sending-registration-request-must-match:
+          $ref: '#/components/schemas/StringList'
+        client-uris-must-match:
+          $ref: '#/components/schemas/StringList'
+        allowed-client-scopes:
+          $ref: '#/components/schemas/StringList'
+        allow-default-scopes:
+          $ref: '#/components/schemas/StringList'
+        allowed-protocol-mapper-types:
+          $ref: '#/components/schemas/StringList'
+        max-clients:
+          $ref: '#/components/schemas/StringList'
+        web-origins:
+          $ref: '#/components/schemas/StringList'
+    ClientRegistrationPolicy:
+      type: object
+      required:
+      - name
+      - providerId
+      - providerType
+      - subType
+      properties:
+        id:
+          type: string
+          description: Server-generated component id (resolved by the findby; never set in the CR).
+        name:
+          type: string
+          description: Component name. Naming a Keycloak default (e.g. "Trusted Hosts") adopts it.
+        providerId:
+          type: string
+          enum:
+          - trusted-hosts
+          - allowed-client-templates
+          - allowed-protocol-mappers
+          - max-clients
+          - client-disabled
+          - consent-required
+          - scope
+          - registration-web-origins
+        providerType:
+          type: string
+          enum:
+          - org.keycloak.services.clientregistration.policy.ClientRegistrationPolicy
+        subType:
+          type: string
+          description: Which registrations the policy applies to.
+          enum:
+          - anonymous
+          - authenticated
+        parentId:
+          type: string
+          description: The realm's internal id (returned by Keycloak; not sent).
+        config:
+          $ref: '#/components/schemas/PolicyConfig'
+paths:
+  /admin/realms/{realm}/components:
+    get:
+      operationId: findDefaultclientregistrationpolicies
+      summary: List the realm's components of a type and name
+      tags:
+      - defaultclientregistrationpolicy
+      parameters:
+      - name: realm
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: type
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: name
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ClientRegistrationPolicy'
+  /admin/realms/{realm}/components/{id}:
+    get:
+      operationId: getDefaultclientregistrationpolicy
+      summary: Get one component
+      tags:
+      - defaultclientregistrationpolicy
+      parameters:
+      - name: realm
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientRegistrationPolicy'
+    put:
+      operationId: updateDefaultclientregistrationpolicy
+      summary: Update one component
+      tags:
+      - defaultclientregistrationpolicy
+      parameters:
+      - name: realm
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientRegistrationPolicy'
+      responses:
+        '204':
+          description: Updated.

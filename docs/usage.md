@@ -397,6 +397,13 @@ spec:
 
 
 
+**Use `KeycloakDefaultClientRegistrationPolicy` for the realm's defaults (0.16.0)** (Trusted Hosts, Allowed Client Scopes,
+Max Clients Limit, ...). Keycloak creates them with the realm, so creating one is never right, and Keycloak does not refuse
+a second one with the same name. The kind has no create and no delete verb: it waits until the realm has the policy, then
+keeps it as declared, and deleting the CR leaves the policy as it is. Its spec is the same. `KeycloakClientRegistrationPolicy`
+is for policies the realm does not have (such as a `client-disabled` one): on a fresh realm it can make a second copy of a
+default (oasgen-provider #919), which then matches two and cannot converge.
+
 **A declared key Keycloak lacks is drift (0.15.0).** Keycloak's default policies omit keys (Allowed Client Scopes has no
 `allowed-client-scopes`), and before 0.15.0 a declared key missing from Keycloak's object was ignored: the policy read Ready
 while its restriction was never sent. Every `config` key is now required to be present. **An empty list clears a key**: it

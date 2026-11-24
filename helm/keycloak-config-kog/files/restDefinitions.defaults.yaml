@@ -41,6 +41,9 @@ clientscopeprotocolmapper:
 clientregistrationpolicy:
   enabled: true
   kind: KeycloakClientRegistrationPolicy
+defaultclientregistrationpolicy:
+  enabled: true
+  kind: KeycloakDefaultClientRegistrationPolicy
 clientprofiles:
   enabled: true
   kind: KeycloakClientProfiles
