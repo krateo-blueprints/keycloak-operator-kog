@@ -39,7 +39,7 @@ jobs:
   # released. It refuses a version that is not a plain X.Y.Z (rule 13's pattern, which publish-chart only applies
   # at index time, after the push) and runs hack/release-preflight if this repository ever adds one.
   release-preflight:
-    uses: krateo-blueprints/charts/.github/workflows/release-preflight.yaml@70095ab05f1c5dc6c8dd39d0b1fdbbc7382a841c # 1.4.3
+    uses: krateo-blueprints/charts/.github/workflows/release-preflight.yaml@db05838e80afecd49ec1fded8daac207bf780ec1 # 1.11.0
     permissions:
       contents: read
     with:
@@ -350,7 +350,7 @@ jobs:
   publish-index:
     needs: release
     # Pinned by full commit SHA (PUBLISHING.md rule 9); Dependabot proposes upgrades.
-    uses: krateo-blueprints/charts/.github/workflows/publish-chart.yaml@70095ab05f1c5dc6c8dd39d0b1fdbbc7382a841c # 1.4.3
+    uses: krateo-blueprints/charts/.github/workflows/publish-chart.yaml@db05838e80afecd49ec1fded8daac207bf780ec1 # 1.11.0
     with:
       source_repo: ${{ github.repository }}
       git_tag: ${{ github.ref_name }}

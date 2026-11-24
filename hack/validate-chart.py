@@ -31,7 +31,7 @@ ICON_OK_PREFIXES = (
     "https://raw.githubusercontent.com/krateo-platformops/",
     "https://raw.githubusercontent.com/krateo-blueprints/",
 )
-SELF_HOSTED_PREFIX = "https://raw.githubusercontent.com/krateo-blueprints/krateo-keycloak-operator-kog/main/"
+SELF_HOSTED_PREFIX = "https://raw.githubusercontent.com/krateo-blueprints/keycloak-operator-kog/main/"
 
 
 # --------------------------------------------------------------------------- chart URLs
@@ -77,7 +77,7 @@ def selftest_chart_urls(repo_root):
         ("icon", "", True),
         ("icon", SELF_HOSTED_PREFIX + "docs/images/not-committed-icon.svg", True),
         ("icon", "https://raw.githubusercontent.com/krateo-platformops/.github/main/brand/logo.svg", False),
-        ("sources", "https://github.com/krateo-blueprints/krateo-keycloak-operator-kog", False),
+        ("sources", "https://github.com/krateo-blueprints/keycloak-operator-kog", False),
         ("home", "https://www.keycloak.org/", False),
     ]
     errors = []
