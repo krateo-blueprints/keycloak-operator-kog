@@ -11,6 +11,12 @@ timestamp: 2026-08-11T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-24 — the repository is `keycloak-operator-kog`
+
+Renamed from `krateo-keycloak-operator-kog` (krateo-blueprints repository standard, R1); GitHub redirects the old name. The
+published chart keeps its name, `keycloak-config-kog`. Added `LICENSE` (Apache-2.0). `home` and `sources` name the repository,
+and the shared release workflows move to krateo-blueprints/charts 1.11.0, whose publisher resolves a renamed owner.
+
 ## 2026-11-24 — KeycloakDefaultClientRegistrationPolicy, adopt-only (0.16.0)
 
 **Why.** On a fresh install the registration-policy CRs race the realm they belong to. Keycloak refuses the create while the

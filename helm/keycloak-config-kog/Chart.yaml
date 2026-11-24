@@ -10,7 +10,7 @@ description: >-
 type: application
 version: CHART_VERSION
 appVersion: "26.0"
-home: https://github.com/krateo-blueprints/krateo-keycloak-operator-kog
+home: https://github.com/krateo-blueprints/keycloak-operator-kog
 icon: https://raw.githubusercontent.com/krateo-platformops/.github/main/brand/logo.svg
 keywords:
   - security
@@ -54,6 +54,6 @@ annotations:
 # oasgen-provider (the generator that reads it) are not this chart's source: listing oasgen-provider
 # made installer's pin-ci resolve "0.5.1" to an unrelated ancient oasgen-provider tag.
 sources:
-  - https://github.com/krateo-blueprints/krateo-keycloak-operator-kog
+  - https://github.com/krateo-blueprints/keycloak-operator-kog
 maintainers:
   - name: krateo

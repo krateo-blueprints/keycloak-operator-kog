@@ -33,7 +33,7 @@ Horizon** (shared Keycloak SSO session — no token bridging).
 | Dir | Role | Tech |
 | --- | --- | --- |
 | [`krateo-keycloak-blueprint/`](https://github.com/krateo-blueprints/krateo-keycloak-blueprint) | **Lifecycle** — deploy/manage the Keycloak server | Krateo `CompositionDefinition` → chart → official Keycloak Operator (`Keycloak` CR) |
-| [`krateo-keycloak-operator-kog/`](https://github.com/krateo-blueprints/krateo-keycloak-operator-kog) | **Configuration** — Keycloak Admin API resources as CRs | KOG (`oasgen-provider` + `rest-dynamic-controller`) over Keycloak's official OAS 3.0.3 |
+| [`keycloak-operator-kog/`](https://github.com/krateo-blueprints/keycloak-operator-kog) | **Configuration** — Keycloak Admin API resources as CRs | KOG (`oasgen-provider` + `rest-dynamic-controller`) over Keycloak's official OAS 3.0.3 |
 
 They connect at exactly one point: the bearer **`keycloak-admin-token`** Secret
 (minted/rotated by External Secrets Operator) that the config KOG uses to call
@@ -213,7 +213,7 @@ step** (see README → Validation status).
 
 Both charts `helm lint` clean and `helm template` to valid manifests. The KOG's
 runtime behaviour is **validated for `KeycloakClient`** (create/findby/update on a live kind cluster; other five RDs share the proven pattern) —
-see the krateo-keycloak-operator-kog README → "Validation status" for the spike checklist
+see the keycloak-operator-kog README → "Validation status" for the spike checklist
 (start with `KeycloakClient` only). `_reference/` holds the upstream OAS and the
 asset generator.
 
