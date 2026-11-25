@@ -408,9 +408,11 @@ default (oasgen-provider #919), which then matches two and cannot converge.
 `allowed-client-scopes`), and before 0.15.0 a declared key missing from Keycloak's object was ignored: the policy read Ready
 while its restriction was never sent. Every `config` key is now required to be present. **An empty list clears a key**: it
 is the only way to clear one (Keycloak keeps the value of a key left out of the update), and Keycloak stores it as absent,
-which then agrees with the declared `[]`. One limit: when that leaves the policy's whole `config` empty (a single-key
-policy such as Allowed Registration Web Origins set to `[]`), the controller keeps re-sending it (oasgen-provider #912).
-Keep one other key, or remove the CR.
+which then agrees with the declared `[]`. A policy whose whole `config` ends up empty this way (a single-key policy such
+as Allowed Registration Web Origins set to `[]`) needs **oasgen-provider >= 0.93.0** (#926): on older releases the
+controller keeps re-sending it until its drift latch stops it at `Ready=False` / `DriftNotConverging` (#912); there, keep
+one other key or remove the CR. Measured on kc-roll057 (Keycloak 26.6.3, 2026-11-25): on 0.92.0, 4 updates then the
+latch; on 0.93.0, 0 updates from apply and `Ready=True`, with a two-key policy as the control (0 updates on both).
 
 ## Client scope mappers and fixed scope ids (0.14.0)
 
