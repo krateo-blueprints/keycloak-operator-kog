@@ -11,6 +11,23 @@ timestamp: 2026-08-11T00:00:00Z
 
 Curated history; release notes live in GitHub Releases.
 
+## 2026-11-25 — a policy whose `config` is all `[]` converges on oasgen-provider 0.93.0
+
+oasgen-provider 0.93.0 (#926) fixes #912: an observed object that is present but empty no longer reads as "not there" when
+every key under it is in `requirePresentFields` and declared empty. So a single-key `KeycloakClientRegistrationPolicy` set to
+`[]` (Allowed Registration Web Origins) converges. No chart change: the floor stays `>= 0.91.1`, and on older releases the
+usage note's advice still applies (keep one other key, or remove the CR).
+
+**Validated live on kc-roll057** (Keycloak 26.6.3, the 0.16.0 kind, throwaway realms, removed afterwards), same script on
+both versions, checking the running rest-dynamic-controller image first:
+- 0.92.0, the negative control: 4 updates, one per 3-minute resync, then "Drift is not converging" and `Ready=False` /
+  `DriftNotConverging`;
+- 0.93.0: 0 updates from apply and over the following 420 s, `Ready=True`;
+- the control, a two-key Allowed Client Scopes policy with one key `[]`: 0 updates and `Ready=True` on both.
+
+The roll 0.92.0 → 0.93.0 itself, with nothing else changed: 51 controllers onto rest-dynamic-controller 0.93.0 (one
+ReplicaSet each), no CR recreated, the RestDefinition CRD's template byte-identical.
+
 ## 2026-11-24 — the repository is `keycloak-provider-kog`
 
 Renamed from `krateo-keycloak-operator-kog` (krateo-blueprints repository standard, R1), through `keycloak-operator-kog` for an
